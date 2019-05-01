@@ -6,20 +6,6 @@ This library is a [ZIO](https://github.com/scalaz/scalaz-zio)-powered client for
 
 In order to use the connector, you need a `SqsAsyncClient`. Refer to the [AWS SDK Documentation](https://docs.aws.amazon.com/sdk-for-java/v2/developer-guide/creating-clients.html) if you need help.
 
-**Example:**
-
-```scala
-Task {
-  SqsAsyncClient
-    .builder()
-    .region(Region.of("ap-northeast-2"))
-    .credentialsProvider(
-      StaticCredentialsProvider.create(AwsBasicCredentials.create("key", "key"))
-    )
-    .build()
-}
-```
-
 ### Publish messages
 
 Use `SqsPublisher.send` to publish messages to a queue.
@@ -87,4 +73,31 @@ def getQueueUrl(
   client: SqsAsyncClient,
   name: String
 ): Task[String]
+```
+
+### Full example
+
+```scala
+object TestApp extends App {
+
+  override def run(args: List[String]): ZIO[Environment, Nothing, Int] =
+    (for {
+      client <- Task {
+                 SqsAsyncClient
+                   .builder()
+                   .region(Region.of("ap-northeast-2"))
+                   .credentialsProvider(
+                     StaticCredentialsProvider.create(AwsBasicCredentials.create("key", "key"))
+                   )
+                   .endpointOverride(new URI("http://localhost:4576")) // point to localstack
+                   .build()
+               }
+      queueName = "TestQueue"
+      _         <- Utils.createQueue(client, queueName)
+      queueUrl  <- Utils.getQueueUrl(client, queueName)
+      _         <- SqsPublisher.send(client, queueUrl, "hello")
+      _         <- SqsStream(client, queueUrl, SqsStreamSettings(stopWhenQueueEmpty = true, waitTimeSeconds = 3))
+                     .foreach(msg => UIO(println(msg.body)))
+    } yield 0).foldM(e => UIO(println(e.toString())).const(1), IO.succeed)
+}
 ```

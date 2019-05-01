@@ -1,7 +1,7 @@
 val mainScala = "2.12.8"
 val allScala  = Seq("2.11.12", mainScala)
 
-organization := "com.github.ghostdogpr"
+organization := "zio"
 name := "zio-sqs"
 licenses := List("Apache-2.0" -> url("http://www.apache.org/licenses/LICENSE-2.0"))
 scalaVersion := mainScala
@@ -11,7 +11,7 @@ pgpPublicRing := file("/tmp/public.asc")
 pgpSecretRing := file("/tmp/secret.asc")
 releaseEarlyWith := SonatypePublisher
 scmInfo := Some(
-  ScmInfo(url("https://github.com/ghostdogpr/zio-sqs/"), "scm:git:git@github.com:ghostdogpr/zio-sqs.git")
+  ScmInfo(url("https://github.com/zio/zio-sqs/"), "scm:git:git@github.com:zio/zio-sqs.git")
 )
 
 libraryDependencies ++= Seq(

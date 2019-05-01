@@ -1,0 +1,37 @@
+package com.github.ghostdogpr.zio.sqs
+
+import scala.collection.JavaConverters._
+import software.amazon.awssdk.services.sqs.SqsAsyncClient
+import software.amazon.awssdk.services.sqs.model._
+import scalaz.zio.{ IO, Task }
+
+object SqsPublisher {
+
+  def send(
+    client: SqsAsyncClient,
+    queueUrl: String,
+    msg: String,
+    settings: SqsPublisherSettings = SqsPublisherSettings()
+  ): Task[Unit] =
+    IO.effectAsync[Throwable, Unit] { cb =>
+      client.sendMessage {
+        val b1 = SendMessageRequest
+          .builder()
+          .queueUrl(queueUrl)
+          .messageBody(msg)
+          .delaySeconds(settings.delaySeconds)
+          .messageAttributes(settings.messageAttributes.asJava)
+        val b2 = if (settings.messageGroupId.nonEmpty) b1.messageGroupId(settings.messageGroupId) else b1
+        val b3 =
+          if (settings.messageDeduplicationId.nonEmpty) b2.messageDeduplicationId(settings.messageDeduplicationId)
+          else b2
+        b3.build
+      }.handle[Unit]((_, err) => {
+        err match {
+          case null => cb(IO.unit)
+          case ex   => cb(IO.fail(ex))
+        }
+      })
+      ()
+    }
+}

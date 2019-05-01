@@ -96,8 +96,11 @@ object TestApp extends App {
       _         <- Utils.createQueue(client, queueName)
       queueUrl  <- Utils.getQueueUrl(client, queueName)
       _         <- SqsPublisher.send(client, queueUrl, "hello")
-      _         <- SqsStream(client, queueUrl, SqsStreamSettings(stopWhenQueueEmpty = true, waitTimeSeconds = 3))
-                     .foreach(msg => UIO(println(msg.body)))
+      _         <- SqsStream(
+                     client,
+                     queueUrl,
+                     SqsStreamSettings(stopWhenQueueEmpty = true, waitTimeSeconds = 3)
+                   ).foreach(msg => UIO(println(msg.body)))
     } yield 0).foldM(e => UIO(println(e.toString())).const(1), IO.succeed)
 }
 ```

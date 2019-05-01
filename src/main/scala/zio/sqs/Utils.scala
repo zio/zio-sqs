@@ -1,4 +1,4 @@
-package com.github.ghostdogpr.zio.sqs
+package zio.sqs
 
 import scala.collection.JavaConverters._
 import software.amazon.awssdk.services.sqs.SqsAsyncClient

@@ -1,4 +1,4 @@
-package com.github.ghostdogpr.zio.sqs
+package zio.sqs
 
 import software.amazon.awssdk.services.sqs.model.MessageAttributeValue
 

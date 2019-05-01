@@ -1,4 +1,4 @@
-package com.github.ghostdogpr.zio.sqs
+package zio.sqs
 
 case class SqsStreamSettings(
   attributeNames: List[String] = Nil,

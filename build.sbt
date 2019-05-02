@@ -2,6 +2,7 @@ val mainScala = "2.12.8"
 val allScala  = Seq("2.11.12", mainScala)
 
 organization := "dev.zio"
+homepage := Some(url("https://github.com/zio/zio-sqs"))
 name := "zio-sqs"
 licenses := List("Apache-2.0" -> url("http://www.apache.org/licenses/LICENSE-2.0"))
 scalaVersion := mainScala

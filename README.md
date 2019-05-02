@@ -1,5 +1,7 @@
 # ZIO Connector for AWS SQS
 
+[![CircleCI](https://circleci.com/gh/zio/zio-sqs/tree/master.svg?style=svg)](https://circleci.com/gh/zio/zio-sqs/tree/master)
+
 This library is a [ZIO](https://github.com/scalaz/scalaz-zio)-powered client for AWS SQS. It is built on top of the [AWS SDK for Java 2.0](https://docs.aws.amazon.com/sdk-for-java/v2/developer-guide/basics.html).
 
 ## How to use

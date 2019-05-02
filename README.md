@@ -4,6 +4,14 @@
 
 This library is a [ZIO](https://github.com/scalaz/scalaz-zio)-powered client for AWS SQS. It is built on top of the [AWS SDK for Java 2.0](https://docs.aws.amazon.com/sdk-for-java/v2/developer-guide/basics.html).
 
+## Add the dependency
+
+To use `zio-sqs`, add the following line in your `build.sbt` file:
+
+```
+libraryDependencies += "dev.zio" %% "zio-sqs" % "0.1.0"
+```
+
 ## How to use
 
 In order to use the connector, you need a `SqsAsyncClient`. Refer to the [AWS SDK Documentation](https://docs.aws.amazon.com/sdk-for-java/v2/developer-guide/creating-clients.html) if you need help.

@@ -68,4 +68,5 @@ fork in run := true
 
 crossScalaVersions := allScala
 
-addCommandAlias("format", "all scalafmtSbt scalafmt test:scalafmt")
+addCommandAlias("fmt", "all scalafmtSbt scalafmt test:scalafmt")
+addCommandAlias("check", "all scalafmtSbtCheck scalafmtCheck test:scalafmtCheck")

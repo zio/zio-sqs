@@ -13,6 +13,14 @@ releaseEarlyWith := SonatypePublisher
 scmInfo := Some(
   ScmInfo(url("https://github.com/zio/zio-sqs/"), "scm:git:git@github.com:zio/zio-sqs.git")
 )
+developers := List(
+  Developer(
+    "ghostdogpr",
+    "Pierre Ricadat",
+    "ghostdogpr@gmail.com",
+    url("https://github.com/ghostdogpr")
+  )
+)
 
 libraryDependencies ++= Seq(
   "org.scalaz"             %% "scalaz-zio"         % "1.0-RC4",

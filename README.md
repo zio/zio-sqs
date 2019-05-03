@@ -36,6 +36,12 @@ def send(
 - `messageGroupId`: see the [related page on AWS docs](https://docs.aws.amazon.com/AWSSimpleQueueService/latest/SQSDeveloperGuide/using-messagegroupid-property.html)
 - `messageAttributes`: see the [related page on AWS docs](https://docs.aws.amazon.com/AWSSimpleQueueService/latest/SQSDeveloperGuide/sqs-message-attributes.html)
 
+```scala
+import zio.sqs.SqsPublisher
+
+SqsPublisher.send(client, queueUrl, msg)
+```
+
 ### Consume messages
 
 Use `SqsStream.apply` to get a stream of messages from a queue. It returns a ZIO `Stream` that you can consume with all the operators available.
@@ -61,6 +67,8 @@ def apply(
 **Example:**
 
 ```scala
+import zio.sqs.{SqsStream, SqsStreamSettings}
+
 SqsStream(
   client,
   queueUrl,
@@ -70,7 +78,7 @@ SqsStream(
 
 ### Helpers
 
-The `Utils` object provides a couple helpful functions to create a queue and find a queue URL from its name.
+The `zio.sqs.Utils` object provides a couple helpful functions to create a queue and find a queue URL from its name.
 
 ```scala
 def createQueue(
@@ -88,6 +96,13 @@ def getQueueUrl(
 ### Full example
 
 ```scala
+import java.net.URI
+import scalaz.zio.{ App, IO, Task, UIO, ZIO }
+import software.amazon.awssdk.auth.credentials.{ AwsBasicCredentials, StaticCredentialsProvider }
+import software.amazon.awssdk.regions.Region
+import software.amazon.awssdk.services.sqs.SqsAsyncClient
+import zio.sqs.{ SqsPublisher, SqsStream, SqsStreamSettings, Utils }
+
 object TestApp extends App {
 
   override def run(args: List[String]): ZIO[Environment, Nothing, Int] =

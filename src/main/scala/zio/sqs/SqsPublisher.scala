@@ -19,13 +19,13 @@ object SqsPublisher {
           .builder()
           .queueUrl(queueUrl)
           .messageBody(msg)
-          .delaySeconds(settings.delaySeconds)
           .messageAttributes(settings.messageAttributes.asJava)
         val b2 = if (settings.messageGroupId.nonEmpty) b1.messageGroupId(settings.messageGroupId) else b1
         val b3 =
           if (settings.messageDeduplicationId.nonEmpty) b2.messageDeduplicationId(settings.messageDeduplicationId)
           else b2
-        b3.build
+        val b4 = settings.delaySeconds.fold(b3)(b3.delaySeconds(_))
+        b4.build
       }.handle[Unit]((_, err) => {
         err match {
           case null => cb(IO.unit)

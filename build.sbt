@@ -24,11 +24,11 @@ developers := List(
 )
 
 libraryDependencies ++= Seq(
-  "org.scalaz"             %% "scalaz-zio"         % "1.0-RC4",
-  "org.scalaz"             %% "scalaz-zio-streams" % "1.0-RC4",
-  "software.amazon.awssdk" % "sqs"                 % "2.5.29",
-  compilerPlugin("org.spire-math" %% "kind-projector"     % "0.9.10"),
-  compilerPlugin("com.olegpy"     %% "better-monadic-for" % "0.3.0-M4")
+  "org.scalaz"             %% "scalaz-zio"         % "1.0-RC5",
+  "org.scalaz"             %% "scalaz-zio-streams" % "1.0-RC5",
+  "software.amazon.awssdk" % "sqs"                 % "2.5.54",
+  compilerPlugin("org.typelevel" %% "kind-projector"     % "0.10.2"),
+  compilerPlugin("com.olegpy"    %% "better-monadic-for" % "0.3.0")
 )
 
 scalacOptions ++= Seq(

@@ -24,7 +24,7 @@ object SqsStream {
       .build
 
     Stream.fromEffect {
-      IO.effectAsync[Throwable, List[Message]] { cb =>
+      IO.effectAsync[Any, Throwable, List[Message]] { cb =>
         client
           .receiveMessage(request)
           .handle[Unit]((result, err) => {
@@ -42,7 +42,7 @@ object SqsStream {
   }
 
   def deleteMessage(client: SqsAsyncClient, queueUrl: String, msg: Message): Task[Unit] =
-    IO.effectAsync[Throwable, Unit] { cb =>
+    IO.effectAsync[Any, Throwable, Unit] { cb =>
       client
         .deleteMessage(
           DeleteMessageRequest

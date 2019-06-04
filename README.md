@@ -9,7 +9,7 @@ This library is a [ZIO](https://github.com/scalaz/scalaz-zio)-powered client for
 To use `zio-sqs`, add the following line in your `build.sbt` file:
 
 ```
-libraryDependencies += "dev.zio" %% "zio-sqs" % "0.1.1"
+libraryDependencies += "dev.zio" %% "zio-sqs" % "0.1.2"
 ```
 
 ## How to use

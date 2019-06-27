@@ -3,9 +3,9 @@ package zio.sqs
 import java.net.URI
 
 import org.elasticmq.rest.sqs.SQSRestServerBuilder
-import org.scalatest.{FlatSpec, Matchers}
-import scalaz.zio.{DefaultRuntime, Task}
-import software.amazon.awssdk.auth.credentials.{AwsBasicCredentials, StaticCredentialsProvider}
+import org.scalatest.{ FlatSpec, Matchers }
+import scalaz.zio.{ DefaultRuntime, Task }
+import software.amazon.awssdk.auth.credentials.{ AwsBasicCredentials, StaticCredentialsProvider }
 import software.amazon.awssdk.regions.Region
 import software.amazon.awssdk.services.sqs.SqsAsyncClient
 import software.amazon.awssdk.services.sqs.model.Message

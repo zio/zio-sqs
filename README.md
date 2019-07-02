@@ -2,14 +2,14 @@
 
 [![CircleCI](https://circleci.com/gh/zio/zio-sqs/tree/master.svg?style=svg)](https://circleci.com/gh/zio/zio-sqs/tree/master)
 
-This library is a [ZIO](https://github.com/scalaz/scalaz-zio)-powered client for AWS SQS. It is built on top of the [AWS SDK for Java 2.0](https://docs.aws.amazon.com/sdk-for-java/v2/developer-guide/basics.html).
+This library is a [ZIO](https://github.com/zio/zio)-powered client for AWS SQS. It is built on top of the [AWS SDK for Java 2.0](https://docs.aws.amazon.com/sdk-for-java/v2/developer-guide/basics.html).
 
 ## Add the dependency
 
 To use `zio-sqs`, add the following line in your `build.sbt` file:
 
 ```
-libraryDependencies += "dev.zio" %% "zio-sqs" % "0.1.2"
+libraryDependencies += "dev.zio" %% "zio-sqs" % "0.1.3"
 ```
 
 ## How to use
@@ -97,10 +97,10 @@ def getQueueUrl(
 
 ```scala
 import java.net.URI
-import scalaz.zio.{ App, IO, Task, UIO, ZIO }
 import software.amazon.awssdk.auth.credentials.{ AwsBasicCredentials, StaticCredentialsProvider }
 import software.amazon.awssdk.regions.Region
 import software.amazon.awssdk.services.sqs.SqsAsyncClient
+import zio.{ App, IO, Task, UIO, ZIO }
 import zio.sqs.{ SqsPublisher, SqsStream, SqsStreamSettings, Utils }
 
 object TestApp extends App {
@@ -114,7 +114,6 @@ object TestApp extends App {
                    .credentialsProvider(
                      StaticCredentialsProvider.create(AwsBasicCredentials.create("key", "key"))
                    )
-                   .endpointOverride(new URI("http://localhost:4576")) // point to localstack
                    .build()
                }
       queueName = "TestQueue"

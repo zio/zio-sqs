@@ -3,8 +3,8 @@ package zio.sqs
 import scala.collection.JavaConverters._
 import software.amazon.awssdk.services.sqs.SqsAsyncClient
 import software.amazon.awssdk.services.sqs.model._
-import scalaz.zio.{ IO, Task }
-import scalaz.zio.stream.Stream
+import zio.{ IO, Task }
+import zio.stream.Stream
 
 object SqsStream {
 

@@ -24,10 +24,10 @@ developers := List(
 )
 
 libraryDependencies ++= Seq(
-  "org.scalaz"             %% "scalaz-zio"         % "1.0-RC5",
-  "org.scalaz"             %% "scalaz-zio-streams" % "1.0-RC5",
-  "software.amazon.awssdk" % "sqs"                 % "2.5.54",
-  compilerPlugin("org.typelevel" %% "kind-projector"     % "0.10.2"),
+  "dev.zio"                %% "zio"         % "1.0.0-RC9",
+  "dev.zio"                %% "zio-streams" % "1.0.0-RC9",
+  "software.amazon.awssdk" % "sqs"          % "2.6.4",
+  compilerPlugin("org.typelevel" %% "kind-projector"     % "0.10.3"),
   compilerPlugin("com.olegpy"    %% "better-monadic-for" % "0.3.0")
 )
 

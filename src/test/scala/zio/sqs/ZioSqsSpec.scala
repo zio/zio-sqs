@@ -4,8 +4,8 @@ import java.net.URI
 
 import com.danielasfregola.randomdatagenerator.RandomDataGenerator
 import org.elasticmq.rest.sqs.SQSRestServerBuilder
-import org.scalatest.{FlatSpec, Matchers}
-import software.amazon.awssdk.auth.credentials.{AwsBasicCredentials, StaticCredentialsProvider}
+import org.scalatest.{ FlatSpec, Matchers }
+import software.amazon.awssdk.auth.credentials.{ AwsBasicCredentials, StaticCredentialsProvider }
 import software.amazon.awssdk.regions.Region
 import software.amazon.awssdk.services.sqs.SqsAsyncClient
 import software.amazon.awssdk.services.sqs.model.Message

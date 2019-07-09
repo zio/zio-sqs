@@ -2,200 +2,162 @@ package zio.sqs
 
 import java.net.URI
 
+import com.danielasfregola.randomdatagenerator.RandomDataGenerator
 import org.elasticmq.rest.sqs.SQSRestServerBuilder
-import org.scalatest.{ FlatSpec, Matchers }
-import scalaz.zio.{ DefaultRuntime, Task }
-import software.amazon.awssdk.auth.credentials.{ AwsBasicCredentials, StaticCredentialsProvider }
+import org.scalatest.{FlatSpec, Matchers}
+import scalaz.zio._
+import software.amazon.awssdk.auth.credentials.{AwsBasicCredentials, StaticCredentialsProvider}
 import software.amazon.awssdk.regions.Region
 import software.amazon.awssdk.services.sqs.SqsAsyncClient
 import software.amazon.awssdk.services.sqs.model.Message
 
-class ZioSqsSpec extends FlatSpec with Matchers {
-  "ZioSqsSpec" should "send a message" in {
-    val result = for {
-      server <- Task(
-                 SQSRestServerBuilder.start()
-               )
-      client <- Task {
-                 SqsAsyncClient
-                   .builder()
-                   .region(Region.AP_NORTHEAST_2)
-                   .credentialsProvider(
-                     StaticCredentialsProvider.create(AwsBasicCredentials.create("key", "key"))
-                   )
-                   .endpointOverride(new URI("http://localhost:9324"))
-                   .build()
-               }
-      queueName = "TestQueue"
-      _         <- Utils.createQueue(client, queueName)
-      queueUrl  <- Utils.getQueueUrl(client, queueName)
-      _         <- SqsPublisher.send(client, queueUrl, "hello")
-      message <- SqsStream(
-                  client,
-                  queueUrl,
-                  SqsStreamSettings(stopWhenQueueEmpty = true, waitTimeSeconds = 3)
-                ).map(_.body()).run(scalaz.zio.stream.Sink.await[String])
-      _ <- Task(server.stopAndWait())
-    } yield {
-      message shouldBe "hello"
+class ZioSqsSpec extends FlatSpec with Matchers with DefaultRuntime with RandomDataGenerator {
+  private val queueName = "TestQueue"
+  private val staticCredentialsProvider: StaticCredentialsProvider =
+    StaticCredentialsProvider.create(AwsBasicCredentials.create("key1", "key"))
+  private val uri                   = new URI("http://localhost:9324")
+  private val region: Region        = Region.AP_NORTHEAST_2
+  private val messages: Seq[String] = random[String](10)
+
+  private val serverResource = ZIO.effect(
+    ZManaged.make(
+      Task(SQSRestServerBuilder.start())
+    ) { server =>
+      UIO.effectTotal(server.stopAndWait())
     }
+  )
 
-    val runtime = new DefaultRuntime {}
-    runtime.unsafeRun(result)
-  }
-
-  it should "send messages by order" in {
-    val result = for {
-      server <- Task(
-                 SQSRestServerBuilder.start()
-               )
-      client <- Task {
-                 SqsAsyncClient
-                   .builder()
-                   .region(Region.AP_NORTHEAST_2)
-                   .credentialsProvider(
-                     StaticCredentialsProvider.create(AwsBasicCredentials.create("key", "key"))
-                   )
-                   .endpointOverride(new URI("http://localhost:9324"))
-                   .build()
-               }
-      queueName = "TestQueue"
-      _         <- Utils.createQueue(client, queueName)
-      queueUrl  <- Utils.getQueueUrl(client, queueName)
-      _         <- SqsPublisher.send(client, queueUrl, "hello")
-      _         <- SqsPublisher.send(client, queueUrl, "hello1")
-      _         <- SqsPublisher.send(client, queueUrl, "hello2")
-      message <- SqsStream(
-                  client,
-                  queueUrl,
-                  SqsStreamSettings(stopWhenQueueEmpty = true, waitTimeSeconds = 3)
-                ).map(_.body()).run(scalaz.zio.stream.Sink.await[String])
-      message1 <- SqsStream(
-                   client,
-                   queueUrl,
-                   SqsStreamSettings(stopWhenQueueEmpty = true, waitTimeSeconds = 3)
-                 ).map(_.body()).run(scalaz.zio.stream.Sink.await[String])
-      message2 <- SqsStream(
-                   client,
-                   queueUrl,
-                   SqsStreamSettings(stopWhenQueueEmpty = true, waitTimeSeconds = 3)
-                 ).map(_.body()).run(scalaz.zio.stream.Sink.await[String])
-      _ <- Task(server.stopAndWait())
-    } yield {
-      message shouldBe "hello"
-      message1 shouldBe "hello1"
-      message2 shouldBe "hello2"
-    }
-
-    val runtime = new DefaultRuntime {}
-    runtime.unsafeRun(result)
-  }
-
-  it should "delete a message manually" in {
-    val result = for {
-      server <- Task(
-                 SQSRestServerBuilder.start()
-               )
-      client <- Task {
-                 SqsAsyncClient
-                   .builder()
-                   .region(Region.AP_NORTHEAST_2)
-                   .credentialsProvider(
-                     StaticCredentialsProvider.create(AwsBasicCredentials.create("key", "key"))
-                   )
-                   .endpointOverride(new URI("http://localhost:9324"))
-                   .build()
-               }
-      queueName = "TestQueue"
-      _         <- Utils.createQueue(client, queueName)
-      queueUrl  <- Utils.getQueueUrl(client, queueName)
-      _         <- SqsPublisher.send(client, queueUrl, "hello")
-      message <- SqsStream(
-                  client,
-                  queueUrl,
-                  SqsStreamSettings(stopWhenQueueEmpty = true, waitTimeSeconds = 3, autoDelete = false)
-                ).run(scalaz.zio.stream.Sink.await[Message])
-      _ <- SqsStream.deleteMessage(
-            client,
-            queueUrl,
-            message
+  private val clientResource = ZIO.effect(
+    ZManaged.make(
+      Task {
+        SqsAsyncClient
+          .builder()
+          .region(region)
+          .credentialsProvider(
+            staticCredentialsProvider
           )
-      list <- SqsStream(
-               client,
-               queueUrl,
-               SqsStreamSettings(stopWhenQueueEmpty = true, waitTimeSeconds = 3)
-             ).runCollect
-      _ <- Task(server.stopAndWait())
+          .endpointOverride(uri)
+          .build()
+      }
+    ) { client =>
+      UIO.effectTotal(client.close())
+    }
+  )
+
+  "ZioSqsSpec" should "send messages" in {
+    val settings: SqsStreamSettings = SqsStreamSettings(stopWhenQueueEmpty = true)
+
+    val result = for {
+      server <- serverResource
+      list <- server.use { _ =>
+               sendAndGet(messages, settings)
+             }
+
     } yield {
-      list shouldBe Nil
+      list.map(_.body()) shouldBe messages
     }
 
-    val runtime = new DefaultRuntime {}
-    runtime.unsafeRun(result)
+    unsafeRun(result)
   }
 
   it should "delete messages manually" in {
+    val settings: SqsStreamSettings =
+      SqsStreamSettings(stopWhenQueueEmpty = true, autoDelete = false, waitTimeSeconds = 1)
+
     val result = for {
-      server <- Task(
-                 SQSRestServerBuilder.start()
-               )
-      client <- Task {
-                 SqsAsyncClient
-                   .builder()
-                   .region(Region.AP_NORTHEAST_2)
-                   .credentialsProvider(
-                     StaticCredentialsProvider.create(AwsBasicCredentials.create("key", "key"))
-                   )
-                   .endpointOverride(new URI("http://localhost:9324"))
-                   .build()
-               }
-      queueName = "TestQueue"
-      _         <- Utils.createQueue(client, queueName)
-      queueUrl  <- Utils.getQueueUrl(client, queueName)
-      _         <- SqsPublisher.send(client, queueUrl, "hello")
-      _         <- SqsPublisher.send(client, queueUrl, "hello1")
-      _         <- SqsPublisher.send(client, queueUrl, "hello2")
-      message <- SqsStream(
-                  client,
-                  queueUrl,
-                  SqsStreamSettings(stopWhenQueueEmpty = true, waitTimeSeconds = 3, autoDelete = false)
-                ).run(scalaz.zio.stream.Sink.await[Message])
-      message1 <- SqsStream(
-                   client,
-                   queueUrl,
-                   SqsStreamSettings(stopWhenQueueEmpty = true, waitTimeSeconds = 3, autoDelete = false)
-                 ).run(scalaz.zio.stream.Sink.await[Message])
-      message2 <- SqsStream(
-                   client,
-                   queueUrl,
-                   SqsStreamSettings(stopWhenQueueEmpty = true, waitTimeSeconds = 3, autoDelete = false)
-                 ).run(scalaz.zio.stream.Sink.await[Message])
-      _ <- SqsStream.deleteMessage(
-            client,
-            queueUrl,
-            message
-          )
-      _ <- SqsStream.deleteMessage(
-            client,
-            queueUrl,
-            message1
-          )
-      _ <- SqsStream.deleteMessage(
-            client,
-            queueUrl,
-            message2
-          )
-      list <- SqsStream(
-               client,
-               queueUrl,
-               SqsStreamSettings(stopWhenQueueEmpty = true, waitTimeSeconds = 3)
-             ).runCollect
-      _ <- Task(server.stopAndWait())
+      server <- serverResource
+      list <- server.use { _ =>
+               for {
+                 messageFromQueue <- sendAndGet(messages, settings)
+                 list             <- deleteAndGet(messageFromQueue, settings)
+               } yield { list }
+             }
+
     } yield {
       list shouldBe Nil
     }
 
-    val runtime = new DefaultRuntime {}
-    runtime.unsafeRun(result)
+    unsafeRun(result)
   }
+
+  it should "delete messages automatically" in {
+    val settings: SqsStreamSettings =
+      SqsStreamSettings(stopWhenQueueEmpty = true, waitTimeSeconds = 1)
+
+    val result = for {
+      server <- serverResource
+      list <- server.use { _ =>
+               for {
+                 _    <- sendAndGet(messages, settings)
+                 list <- get(settings)
+               } yield { list }
+             }
+
+    } yield {
+      list shouldBe Nil
+    }
+
+    unsafeRun(result)
+  }
+
+  private def sendAndGet(messages: Seq[String], settings: SqsStreamSettings): ZIO[Any, Throwable, List[Message]] =
+    for {
+      client <- clientResource
+      messagesFromQueue <- client.use { c =>
+                            for {
+                              _        <- Utils.createQueue(c, queueName)
+                              queueUrl <- Utils.getQueueUrl(c, queueName)
+                              _        <- ZIO.foreach(messages)(SqsPublisher.send(c, queueUrl, _))
+                              messagesFromQueue <- SqsStream(
+                                                    c,
+                                                    queueUrl,
+                                                    settings
+                                                  ).runCollect
+                            } yield { messagesFromQueue }
+                          }
+
+    } yield {
+      messagesFromQueue
+    }
+
+  private def deleteAndGet(messages: Seq[Message], settings: SqsStreamSettings): ZIO[Any, Throwable, List[Message]] =
+    for {
+      client <- clientResource
+      list <- client.use { c =>
+               for {
+                 queueUrl <- Utils.getQueueUrl(c, queueName)
+                 _ <- ZIO.foreach(messages)(
+                       SqsStream.deleteMessage(
+                         c,
+                         queueUrl,
+                         _
+                       )
+                     )
+                 list <- SqsStream(
+                          c,
+                          queueUrl,
+                          settings
+                        ).runCollect
+               } yield { list }
+             }
+    } yield {
+      list
+    }
+
+  private def get(settings: SqsStreamSettings): ZIO[Any, Throwable, List[Message]] =
+    for {
+      client <- clientResource
+      list <- client.use { c =>
+               for {
+                 queueUrl <- Utils.getQueueUrl(c, queueName)
+                 list <- SqsStream(
+                          c,
+                          queueUrl,
+                          settings
+                        ).runCollect
+               } yield { list }
+             }
+    } yield {
+      list
+    }
 }

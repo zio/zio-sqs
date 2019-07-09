@@ -14,7 +14,7 @@ import zio._
 class ZioSqsSpec extends FlatSpec with Matchers with DefaultRuntime with RandomDataGenerator {
   private val queueName = "TestQueue"
   private val staticCredentialsProvider: StaticCredentialsProvider =
-    StaticCredentialsProvider.create(AwsBasicCredentials.create("key1", "key"))
+    StaticCredentialsProvider.create(AwsBasicCredentials.create("key", "key"))
   private val uri                   = new URI("http://localhost:9324")
   private val region: Region        = Region.AP_NORTHEAST_2
   private val messages: Seq[String] = random[String](10)

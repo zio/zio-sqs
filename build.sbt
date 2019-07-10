@@ -24,10 +24,14 @@ developers := List(
 )
 
 libraryDependencies ++= Seq(
-  "dev.zio"                %% "zio"         % "1.0.0-RC9",
-  "dev.zio"                %% "zio-streams" % "1.0.0-RC9",
-  "software.amazon.awssdk" % "sqs"          % "2.6.4",
-  compilerPlugin("org.typelevel" %% "kind-projector"     % "0.10.3"),
+  "dev.zio"                %% "zio"                   % "1.0.0-RC9",
+  "dev.zio"                %% "zio-streams"           % "1.0.0-RC9",
+  "software.amazon.awssdk" % "sqs"                    % "2.6.4",
+  "org.scalatest"          %% "scalatest"             % "3.0.8" % "test",
+  "org.elasticmq"          %% "elasticmq-rest-sqs"    % "0.14.7" % "test",
+  "org.elasticmq"          %% "elasticmq-core"        % "0.14.7" % "test",
+  "com.danielasfregola"    %% "random-data-generator" % "2.7" % "test",
+  compilerPlugin("org.typelevel" %% "kind-projector"     % "0.10.2"),
   compilerPlugin("com.olegpy"    %% "better-monadic-for" % "0.3.0")
 )
 

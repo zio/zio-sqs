@@ -4,6 +4,7 @@ import java.net.URI
 
 import com.danielasfregola.randomdatagenerator.RandomDataGenerator
 import org.elasticmq.rest.sqs.SQSRestServerBuilder
+import org.scalacheck.{ Arbitrary, Gen }
 import org.scalatest.{ FlatSpec, Matchers }
 import software.amazon.awssdk.auth.credentials.{ AwsBasicCredentials, StaticCredentialsProvider }
 import software.amazon.awssdk.regions.Region
@@ -12,6 +13,8 @@ import software.amazon.awssdk.services.sqs.model.Message
 import zio._
 
 class ZioSqsSpec extends FlatSpec with Matchers with DefaultRuntime with RandomDataGenerator {
+  private implicit val arbitrary: Arbitrary[String] = Arbitrary(Gen.asciiPrintableStr)
+
   private val queueName = "TestQueue"
   private val staticCredentialsProvider: StaticCredentialsProvider =
     StaticCredentialsProvider.create(AwsBasicCredentials.create("key", "key"))

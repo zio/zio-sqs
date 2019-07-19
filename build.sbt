@@ -32,7 +32,7 @@ libraryDependencies ++= Seq(
   "org.elasticmq"          %% "elasticmq-core"        % "0.14.7" % "test",
   "com.danielasfregola"    %% "random-data-generator" % "2.7" % "test",
   compilerPlugin("org.typelevel" %% "kind-projector"     % "0.10.3"),
-  compilerPlugin("com.olegpy"    %% "better-monadic-for" % "0.3.0")
+  compilerPlugin("com.olegpy"    %% "better-monadic-for" % "0.3.1")
 )
 
 scalacOptions ++= Seq(

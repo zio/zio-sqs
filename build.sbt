@@ -26,7 +26,7 @@ developers := List(
 libraryDependencies ++= Seq(
   "dev.zio"                %% "zio"                   % "1.0.0-RC10-1",
   "dev.zio"                %% "zio-streams"           % "1.0.0-RC10-1",
-  "software.amazon.awssdk" % "sqs"                    % "2.7.11",
+  "software.amazon.awssdk" % "sqs"                    % "2.7.12",
   "org.scalatest"          %% "scalatest"             % "3.0.8" % "test",
   "org.elasticmq"          %% "elasticmq-rest-sqs"    % "0.14.7" % "test",
   "org.elasticmq"          %% "elasticmq-core"        % "0.14.7" % "test",

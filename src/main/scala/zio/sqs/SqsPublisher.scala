@@ -13,7 +13,7 @@ object SqsPublisher {
     msg: String,
     settings: SqsPublisherSettings = SqsPublisherSettings()
   ): Task[Unit] =
-    IO.effectAsync[Any, Throwable, Unit] { cb =>
+    Task.effectAsync[Unit] { cb =>
       client.sendMessage {
         val b1 = SendMessageRequest
           .builder()

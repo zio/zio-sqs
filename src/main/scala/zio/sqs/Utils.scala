@@ -12,7 +12,7 @@ object Utils {
     name: String,
     attributes: Map[QueueAttributeName, String] = Map()
   ): Task[Unit] =
-    IO.effectAsync[Any, Throwable, Unit] { cb =>
+    Task.effectAsync[Unit] { cb =>
       client
         .createQueue(CreateQueueRequest.builder.queueName(name).attributes(attributes.asJava).build)
         .handle[Unit]((_, err) => {
@@ -24,7 +24,7 @@ object Utils {
       ()
     }
 
-  def getQueueUrl(client: SqsAsyncClient, name: String): Task[String] = IO.effectAsync[Any, Throwable, String] { cb =>
+  def getQueueUrl(client: SqsAsyncClient, name: String): Task[String] = Task.effectAsync[String] { cb =>
     client
       .getQueueUrl(GetQueueUrlRequest.builder.queueName(name).build)
       .handle[Unit]((result, err) => {

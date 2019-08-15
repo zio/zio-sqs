@@ -1,4 +1,4 @@
-val mainScala = "2.12.8"
+val mainScala = "2.12.9"
 val allScala  = Seq("2.11.12", mainScala)
 
 organization := "dev.zio"

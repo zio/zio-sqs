@@ -1,4 +1,4 @@
-val mainScala = "2.12.8"
+val mainScala = "2.12.9"
 val allScala  = Seq("2.11.12", mainScala)
 
 organization := "dev.zio"
@@ -26,7 +26,7 @@ developers := List(
 libraryDependencies ++= Seq(
   "dev.zio"                %% "zio"                   % "1.0.0-RC11-1",
   "dev.zio"                %% "zio-streams"           % "1.0.0-RC11-1",
-  "software.amazon.awssdk" % "sqs"                    % "2.7.23",
+  "software.amazon.awssdk" % "sqs"                    % "2.7.24",
   "org.scalatest"          %% "scalatest"             % "3.0.8" % "test",
   "org.elasticmq"          %% "elasticmq-rest-sqs"    % "0.14.7" % "test",
   "org.elasticmq"          %% "elasticmq-core"        % "0.14.7" % "test",

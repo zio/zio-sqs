@@ -38,7 +38,7 @@ object SqsStream {
     }.forever
       .takeWhile(_.nonEmpty || !settings.stopWhenQueueEmpty)
       .flatMap[Any, Throwable, Message](Stream.fromIterable)
-      .mapM(msg => IO.when(settings.autoDelete)(deleteMessage(client, queueUrl, msg)).const(msg))
+      .mapM(msg => IO.when(settings.autoDelete)(deleteMessage(client, queueUrl, msg)).as(msg))
   }
 
   def deleteMessage(client: SqsAsyncClient, queueUrl: String, msg: Message): Task[Unit] =

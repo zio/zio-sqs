@@ -125,6 +125,6 @@ object TestApp extends App {
                      queueUrl,
                      SqsStreamSettings(stopWhenQueueEmpty = true, waitTimeSeconds = 3)
                    ).foreach(msg => UIO(println(msg.body)))
-    } yield 0).foldM(e => UIO(println(e.toString())).const(1), IO.succeed)
+    } yield 0).foldM(e => UIO(println(e.toString())).as(1), IO.succeed)
 }
 ```

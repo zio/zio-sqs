@@ -8,9 +8,9 @@ licenses := List("Apache-2.0" -> url("http://www.apache.org/licenses/LICENSE-2.0
 scalaVersion := mainScala
 parallelExecution in Test := false
 fork in Test := true
+pgpPassphrase := sys.env.get("PGP_PASSWORD").map(_.toArray)
 pgpPublicRing := file("/tmp/public.asc")
 pgpSecretRing := file("/tmp/secret.asc")
-releaseEarlyWith := SonatypePublisher
 scmInfo := Some(
   ScmInfo(url("https://github.com/zio/zio-sqs/"), "scm:git:git@github.com:zio/zio-sqs.git")
 )
@@ -22,6 +22,8 @@ developers := List(
     url("https://github.com/ghostdogpr")
   )
 )
+
+publishTo := sonatypePublishToBundle.value
 
 libraryDependencies ++= Seq(
   "dev.zio"                %% "zio"                   % "1.0.0-RC12-1",

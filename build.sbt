@@ -1,5 +1,5 @@
 val mainScala = "2.12.9"
-val allScala  = Seq("2.11.12", mainScala)
+val allScala  = Seq(mainScala)
 
 organization := "dev.zio"
 homepage := Some(url("https://github.com/zio/zio-sqs"))

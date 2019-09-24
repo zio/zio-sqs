@@ -30,8 +30,8 @@ libraryDependencies ++= Seq(
   "dev.zio"                %% "zio-streams"           % "1.0.0-RC13",
   "software.amazon.awssdk" % "sqs"                    % "2.9.5",
   "org.scalatest"          %% "scalatest"             % "3.0.8" % "test",
-  "org.elasticmq"          %% "elasticmq-rest-sqs"    % "0.14.12" % "test",
-  "org.elasticmq"          %% "elasticmq-core"        % "0.14.12" % "test",
+  "org.elasticmq"          %% "elasticmq-rest-sqs"    % "0.14.14" % "test",
+  "org.elasticmq"          %% "elasticmq-core"        % "0.14.14" % "test",
   "com.danielasfregola"    %% "random-data-generator" % "2.7" % "test",
   compilerPlugin("org.typelevel" %% "kind-projector"     % "0.10.3"),
   compilerPlugin("com.olegpy"    %% "better-monadic-for" % "0.3.1")

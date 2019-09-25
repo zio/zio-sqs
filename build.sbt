@@ -28,7 +28,7 @@ publishTo := sonatypePublishToBundle.value
 libraryDependencies ++= Seq(
   "dev.zio"                %% "zio"                   % "1.0.0-RC13",
   "dev.zio"                %% "zio-streams"           % "1.0.0-RC13",
-  "software.amazon.awssdk" % "sqs"                    % "2.9.5",
+  "software.amazon.awssdk" % "sqs"                    % "2.9.6",
   "org.scalatest"          %% "scalatest"             % "3.0.8" % "test",
   "org.elasticmq"          %% "elasticmq-rest-sqs"    % "0.14.14" % "test",
   "org.elasticmq"          %% "elasticmq-core"        % "0.14.14" % "test",

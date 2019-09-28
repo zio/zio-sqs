@@ -70,20 +70,6 @@ jobs:
             - "~/.ivy2/cache"
             - "~/.sbt"
             - "~/.m2"
-  test213_jdk8:
-    docker:
-      - image: hseeberger/scala-sbt:8u213_1.2.8_2.13.0
-    steps:
-      - checkout
-      - restore_cache:
-          key: sbt-cache
-      - run: sbt ++2.13.1! test
-      - save_cache:
-          key: sbt-cache
-          paths:
-            - "~/.ivy2/cache"
-            - "~/.sbt"
-            - "~/.m2"
   test213_jdk11:
     docker:
       - image: hseeberger/scala-sbt:11.0.3_1.2.8_2.13.0
@@ -150,7 +136,6 @@ workflows:
           requires:
             - test212_jdk8
             - test212_jdk11
-            - test213_jdk8
             - test213_jdk11
           filters:
             branches:

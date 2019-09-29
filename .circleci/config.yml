@@ -7,7 +7,7 @@ jobs:
       - checkout
       - restore_cache:
           key: sbt-cache
-      - run: sbt ++2.12.9! check
+      - run: sbt ++2.12.10! check
       - save_cache:
           key: sbt-cache
           paths:
@@ -21,7 +21,21 @@ jobs:
       - checkout
       - restore_cache:
           key: sbt-cache
-      - run: sbt ++2.12.9! check
+      - run: sbt ++2.12.10! check
+      - save_cache:
+          key: sbt-cache
+          paths:
+            - "~/.ivy2/cache"
+            - "~/.sbt"
+            - "~/.m2"
+  lint213_jdk11:
+    docker:
+      - image: hseeberger/scala-sbt:11.0.3_1.2.8_2.13.0
+    steps:
+      - checkout
+      - restore_cache:
+          key: sbt-cache
+      - run: sbt ++2.13.1! check
       - save_cache:
           key: sbt-cache
           paths:
@@ -35,7 +49,7 @@ jobs:
       - checkout
       - restore_cache:
           key: sbt-cache
-      - run: sbt ++2.12.9! test
+      - run: sbt ++2.12.10! test
       - save_cache:
           key: sbt-cache
           paths:
@@ -49,7 +63,21 @@ jobs:
       - checkout
       - restore_cache:
           key: sbt-cache
-      - run: sbt ++2.12.9! test
+      - run: sbt ++2.12.10! test
+      - save_cache:
+          key: sbt-cache
+          paths:
+            - "~/.ivy2/cache"
+            - "~/.sbt"
+            - "~/.m2"
+  test213_jdk11:
+    docker:
+      - image: hseeberger/scala-sbt:11.0.3_1.2.8_2.13.0
+    steps:
+      - checkout
+      - restore_cache:
+          key: sbt-cache
+      - run: sbt ++2.13.1! test
       - save_cache:
           key: sbt-cache
           paths:
@@ -81,6 +109,10 @@ workflows:
           filters:
             tags:
               only: /^v[0-9]+(\.[0-9]+)*$/
+      - lint213_jdk11:
+          filters:
+            tags:
+              only: /^v[0-9]+(\.[0-9]+)*$/
       - test212_jdk8:
           requires:
             - lint212_jdk8
@@ -93,11 +125,18 @@ workflows:
           filters:
             tags:
               only: /^v[0-9]+(\.[0-9]+)*$/
+      - test213_jdk11:
+          requires:
+            - lint213_jdk11
+          filters:
+            tags:
+              only: /^v[0-9]+(\.[0-9]+)*$/
       - release:
           context: Sonatype
           requires:
             - test212_jdk8
             - test212_jdk11
+            - test213_jdk11
           filters:
             branches:
               ignore: /.*/

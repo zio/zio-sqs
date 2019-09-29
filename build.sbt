@@ -1,5 +1,5 @@
-val mainScala = "2.12.9"
-val allScala  = Seq(mainScala)
+val mainScala = "2.13.1"
+val allScala  = Seq(mainScala, "2.12.10")
 
 organization := "dev.zio"
 homepage := Some(url("https://github.com/zio/zio-sqs"))
@@ -26,16 +26,23 @@ developers := List(
 publishTo := sonatypePublishToBundle.value
 
 libraryDependencies ++= Seq(
-  "dev.zio"                %% "zio"                   % "1.0.0-RC13",
-  "dev.zio"                %% "zio-streams"           % "1.0.0-RC13",
-  "software.amazon.awssdk" % "sqs"                    % "2.9.8",
-  "org.scalatest"          %% "scalatest"             % "3.0.8" % "test",
-  "org.elasticmq"          %% "elasticmq-rest-sqs"    % "0.14.14" % "test",
-  "org.elasticmq"          %% "elasticmq-core"        % "0.14.14" % "test",
-  "com.danielasfregola"    %% "random-data-generator" % "2.7" % "test",
+  "dev.zio"                %% "zio"         % "1.0.0-RC13",
+  "dev.zio"                %% "zio-streams" % "1.0.0-RC13",
+  "software.amazon.awssdk" % "sqs"          % "2.9.8",
   compilerPlugin("org.typelevel" %% "kind-projector"     % "0.10.3"),
   compilerPlugin("com.olegpy"    %% "better-monadic-for" % "0.3.1")
-)
+) ++ (CrossVersion.partialVersion(scalaVersion.value) match {
+  case Some((2, 12)) =>
+    Seq(
+      "org.scala-lang.modules" %% "scala-collection-compat" % "2.1.2",
+      "org.scalatest"          %% "scalatest"               % "3.0.8" % "test",
+      "org.elasticmq"          %% "elasticmq-rest-sqs"      % "0.14.14" % "test",
+      "org.elasticmq"          %% "elasticmq-core"          % "0.14.14" % "test",
+      "com.danielasfregola"    %% "random-data-generator"   % "2.7" % "test"
+    )
+
+  case _ => Nil
+})
 
 scalacOptions ++= Seq(
   "-deprecation",
@@ -44,7 +51,6 @@ scalacOptions ++= Seq(
   "-explaintypes",
   "-Yrangepos",
   "-feature",
-  "-Xfuture",
   "-language:higherKinds",
   "-language:existentials",
   "-unchecked",
@@ -53,17 +59,9 @@ scalacOptions ++= Seq(
   "-Ywarn-unused",
   "-Ywarn-value-discard"
 ) ++ (CrossVersion.partialVersion(scalaVersion.value) match {
-  case Some((2, 11)) =>
-    Seq(
-      "-Yno-adapted-args",
-      "-Ypartial-unification",
-      "-Ywarn-inaccessible",
-      "-Ywarn-infer-any",
-      "-Ywarn-nullary-override",
-      "-Ywarn-nullary-unit"
-    )
   case Some((2, 12)) =>
     Seq(
+      "-Xfuture",
       "-Xsource:2.13",
       "-Yno-adapted-args",
       "-Ypartial-unification",

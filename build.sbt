@@ -26,23 +26,17 @@ developers := List(
 publishTo := sonatypePublishToBundle.value
 
 libraryDependencies ++= Seq(
-  "dev.zio"                %% "zio"         % "1.0.0-RC13",
-  "dev.zio"                %% "zio-streams" % "1.0.0-RC13",
-  "software.amazon.awssdk" % "sqs"          % "2.9.9",
+  "dev.zio"                %% "zio"                     % "1.0.0-RC13",
+  "dev.zio"                %% "zio-streams"             % "1.0.0-RC13",
+  "software.amazon.awssdk" % "sqs"                      % "2.9.9",
+  "org.scala-lang.modules" %% "scala-collection-compat" % "2.1.2",
+  "org.scalatest"          %% "scalatest"               % "3.0.8" % "test",
+  "org.elasticmq"          %% "elasticmq-rest-sqs"      % "0.15.0" % "test",
+  "org.elasticmq"          %% "elasticmq-core"          % "0.15.0" % "test",
+  "com.danielasfregola"    %% "random-data-generator"   % "2.7" % "test",
   compilerPlugin("org.typelevel" %% "kind-projector"     % "0.10.3"),
   compilerPlugin("com.olegpy"    %% "better-monadic-for" % "0.3.1")
-) ++ (CrossVersion.partialVersion(scalaVersion.value) match {
-  case Some((2, 12)) =>
-    Seq(
-      "org.scala-lang.modules" %% "scala-collection-compat" % "2.1.2",
-      "org.scalatest"          %% "scalatest"               % "3.0.8" % "test",
-      "org.elasticmq"          %% "elasticmq-rest-sqs"      % "0.14.14" % "test",
-      "org.elasticmq"          %% "elasticmq-core"          % "0.14.14" % "test",
-      "com.danielasfregola"    %% "random-data-generator"   % "2.7" % "test"
-    )
-
-  case _ => Nil
-})
+)
 
 scalacOptions ++= Seq(
   "-deprecation",

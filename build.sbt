@@ -34,10 +34,11 @@ libraryDependencies ++= Seq(
 ) ++ (CrossVersion.partialVersion(scalaVersion.value) match {
   case Some((2, 12)) =>
     Seq(
-      "org.scalatest"       %% "scalatest"             % "3.0.8"   % "test",
-      "org.elasticmq"       %% "elasticmq-rest-sqs"    % "0.14.14" % "test",
-      "org.elasticmq"       %% "elasticmq-core"        % "0.14.14" % "test",
-      "com.danielasfregola" %% "random-data-generator" % "2.7"     % "test"
+      "org.scala-lang.modules" %% "scala-collection-compat" % "2.1.2",
+      "org.scalatest"          %% "scalatest"               % "3.0.8" % "test",
+      "org.elasticmq"          %% "elasticmq-rest-sqs"      % "0.14.14" % "test",
+      "org.elasticmq"          %% "elasticmq-core"          % "0.14.14" % "test",
+      "com.danielasfregola"    %% "random-data-generator"   % "2.7" % "test"
     )
 
   case _ => Nil

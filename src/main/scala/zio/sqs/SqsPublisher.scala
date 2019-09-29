@@ -1,6 +1,6 @@
 package zio.sqs
 
-import scala.collection.JavaConverters._
+import scala.jdk.CollectionConverters._
 import software.amazon.awssdk.services.sqs.SqsAsyncClient
 import software.amazon.awssdk.services.sqs.model._
 import zio.{ IO, Task }

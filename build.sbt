@@ -28,7 +28,7 @@ publishTo := sonatypePublishToBundle.value
 libraryDependencies ++= Seq(
   "dev.zio"                %% "zio"         % "1.0.0-RC13",
   "dev.zio"                %% "zio-streams" % "1.0.0-RC13",
-  "software.amazon.awssdk" % "sqs"          % "2.9.8",
+  "software.amazon.awssdk" % "sqs"          % "2.9.9",
   compilerPlugin("org.typelevel" %% "kind-projector"     % "0.10.3"),
   compilerPlugin("com.olegpy"    %% "better-monadic-for" % "0.3.1")
 ) ++ (CrossVersion.partialVersion(scalaVersion.value) match {

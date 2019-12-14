@@ -29,7 +29,7 @@ libraryDependencies ++= Seq(
   "dev.zio"                %% "zio"                     % "1.0.0-RC17",
   "dev.zio"                %% "zio-streams"             % "1.0.0-RC17",
   "software.amazon.awssdk" % "sqs"                      % "2.10.33",
-  "org.scala-lang.modules" %% "scala-collection-compat" % "2.1.2",
+  "org.scala-lang.modules" %% "scala-collection-compat" % "2.1.3",
   "dev.zio"                %% "zio-test"                % "1.0.0-RC17" % "test",
   "dev.zio"                %% "zio-test-sbt"            % "1.0.0-RC17" % "test",
   "org.elasticmq"          %% "elasticmq-rest-sqs"      % "0.15.3" % "test",

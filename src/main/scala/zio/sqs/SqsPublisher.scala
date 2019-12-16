@@ -1,11 +1,13 @@
 package zio.sqs
 
+import java.util.function.BiFunction
+
 import scala.jdk.CollectionConverters._
 import software.amazon.awssdk.services.sqs.SqsAsyncClient
 import software.amazon.awssdk.services.sqs.model._
 import zio.clock.Clock
-import zio.stream.{ Sink, Stream, ZStream }
-import zio.{ IO, Schedule, Task }
+import zio.stream.{Sink, Stream, ZStream}
+import zio.{IO, Schedule, Task}
 
 object SqsPublisher {
 
@@ -107,14 +109,17 @@ object SqsPublisher {
     Task.effectAsync[List[ErrorOrEvent]]({ cb =>
       client
         .sendMessageBatch(req)
-        .handleAsync[Unit]((res: SendMessageBatchResponse, err: Throwable) => {
-          err match {
-            case null =>
-              val m  = indexedMessages.map(it => (it._2.toString, it._1)).toMap
-              val ss = res.successful().asScala.map(it => m(it.id())).map(Right(_): ErrorOrEvent).toList
-              val es = res.failed().asScala.map(err => (err, m(err.id()))).map(Left(_): ErrorOrEvent).toList
-              cb(IO.succeed(ss ++ es))
-            case ex => cb(IO.fail(ex))
+        .handleAsync[Unit](new BiFunction[SendMessageBatchResponse, Throwable, Unit] {
+          override def apply(res: SendMessageBatchResponse, err: Throwable): Unit = {
+            err match {
+              case null =>
+                val m  = indexedMessages.map(it => (it._2.toString, it._1)).toMap
+                val ss = res.successful().asScala.map(it => m(it.id())).map(Right(_): ErrorOrEvent).toList
+                val es = res.failed().asScala.map(err => (err, m(err.id()))).map(Left(_): ErrorOrEvent).toList
+                cb(IO.succeed(ss ++ es))
+              case ex =>
+                cb(IO.fail(ex))
+            }
           }
         })
       ()

@@ -6,8 +6,8 @@ import scala.jdk.CollectionConverters._
 import software.amazon.awssdk.services.sqs.SqsAsyncClient
 import software.amazon.awssdk.services.sqs.model._
 import zio.clock.Clock
-import zio.stream.{Sink, Stream, ZStream}
-import zio.{IO, Schedule, Task}
+import zio.stream.{ Sink, Stream, ZStream }
+import zio.{ IO, Schedule, Task }
 
 object SqsPublisher {
 
@@ -110,7 +110,7 @@ object SqsPublisher {
       client
         .sendMessageBatch(req)
         .handleAsync[Unit](new BiFunction[SendMessageBatchResponse, Throwable, Unit] {
-          override def apply(res: SendMessageBatchResponse, err: Throwable): Unit = {
+          override def apply(res: SendMessageBatchResponse, err: Throwable): Unit =
             err match {
               case null =>
                 val m  = indexedMessages.map(it => (it._2.toString, it._1)).toMap
@@ -120,7 +120,6 @@ object SqsPublisher {
               case ex =>
                 cb(IO.fail(ex))
             }
-          }
         })
       ()
     })

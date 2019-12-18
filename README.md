@@ -42,6 +42,80 @@ import zio.sqs.SqsPublisher
 SqsPublisher.send(client, queueUrl, msg)
 ```
 
+#### Publish with streaming
+
+To publish a collection of messages, `stringStream` or `eventStream` can be used.
+
+`stringStream` allows to publish a one or more of strings. When publishing plain strings, no `attributes`, `groupId` or `deduplicationId` is assigned to published messages.
+
+```scala
+def stringStream(
+  client: SqsAsyncClient,
+  queueUrl: String,
+  settings: SqsPublisherStreamSettings = SqsPublisherStreamSettings()
+)(
+  ms: Stream[Throwable, String]
+): ZStream[Clock, Throwable, ErrorOrEvent]
+```
+
+If one need to provide a custom `attributes`, `groupId` or `deduplicationId`, an `eventStream`-method can be used:
+
+```scala
+def eventStream(
+  client: SqsAsyncClient,
+  queueUrl: String,
+  settings: SqsPublisherStreamSettings = SqsPublisherStreamSettings()
+)(
+  ms: Stream[Throwable, Event]
+): ZStream[Clock, Throwable, ErrorOrEvent]
+```
+
+`eventStream` uses the `Event`-trait to publish messages. `Event` has the following structure:
+
+```scala
+trait Event {
+  def body: String
+  def attributes: Map[String, MessageAttributeValue]
+  def groupId: Option[String]
+  def deduplicationId: Option[String]
+}
+```
+
+Here:
+
+- `body` - a message to publish to SQS.
+- `attributes` - a map of [attributes](https://docs.aws.amazon.com/AWSSimpleQueueService/latest/SQSDeveloperGuide/sqs-message-attributes.html) to set.
+- `groupId` - assigns a specific [message group](https://docs.aws.amazon.com/AWSSimpleQueueService/latest/SQSDeveloperGuide/using-messagegroupid-property.html) to the message.
+- `deduplicationId` - token used for [deduplication](https://docs.aws.amazon.com/AWSSimpleQueueService/latest/SQSDeveloperGuide/using-messagededuplicationid-property.html) of sent messages.
+
+When `stringStream` or `eventStream` are used, they map a stream of strings(events) to the stream of results, `ErrorOrEvent`.
+`ErrorOrEvent` is defined as: `Either[(BatchResultErrorEntry, Event), Event]`, which could be one of:
+
+- `(BatchResultErrorEntry, Event)` - a pair, represending an error result from SQS and an original Event.
+  `BatchResultErrorEntry` - is a detailed description of the [result](https://docs.aws.amazon.com/AWSSimpleQueueService/latest/APIReference/API_BatchResultErrorEntry.html).
+- `Event` - the original event. If strings were streamed, `Event#body` will contain each of them.
+
+`SqsPublisherStreamSettings` a collection of settings to tune the publishing parameters:
+
+- `batchSize: Int` The size of the batch to use, [1-10] (default: 10).
+- `duration: Duration` - Time to wait for the batch to be full (default: 1 second).
+- `parallelism: Int` - the number of concurrent requests to make to SQS (default: 16).
+
+**Example:**
+
+```scala
+val sendStringStream = SqsPublisher.stringStream(client, queueUrl, settings)
+
+Stream("a", "b", "c")
+  .via(sendStringStream)
+  .mapM(ZIO.fromEither)
+  .run(Sink.drain)
+  .foldM(
+    e => ZIO.effectTotal(logger.error("Application failed", e)) *> ZIO.succeed(1),
+    _ => ZIO.succeed(0)
+  )
+```
+
 ### Consume messages
 
 Use `SqsStream.apply` to get a stream of messages from a queue. It returns a ZIO `Stream` that you can consume with all the operators available.

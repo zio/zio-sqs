@@ -1,7 +1,6 @@
 package zio.sqs
 
-import zio.duration.Duration
-import zio.duration._
+import zio.duration.{Duration, _}
 
 final case class SqsPublisherStreamSettings(
   batchSize: Int = 10,

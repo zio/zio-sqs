@@ -1,10 +1,11 @@
 package zio.sqs
 
-import scala.jdk.CollectionConverters._
 import software.amazon.awssdk.services.sqs.SqsAsyncClient
 import software.amazon.awssdk.services.sqs.model._
-import zio.{ IO, Task }
 import zio.stream.Stream
+import zio.{IO, Task}
+
+import scala.jdk.CollectionConverters._
 
 object SqsStream {
 
@@ -27,12 +28,12 @@ object SqsStream {
       Task.effectAsync[List[Message]] { cb =>
         client
           .receiveMessage(request)
-          .handle[Unit]((result, err) => {
+          .handle[Unit] { (result, err) =>
             err match {
               case null => cb(IO.succeed(result.messages.asScala.toList))
               case ex   => cb(IO.fail(ex))
             }
-          })
+          }
         ()
       }
     }.forever
@@ -51,12 +52,12 @@ object SqsStream {
             .receiptHandle(msg.receiptHandle())
             .build()
         )
-        .handle[Unit]((_, err) => {
+        .handle[Unit] { (_, err) =>
           err match {
             case null => cb(IO.unit)
             case ex   => cb(IO.fail(ex))
           }
-        })
+        }
       ()
     }
 }

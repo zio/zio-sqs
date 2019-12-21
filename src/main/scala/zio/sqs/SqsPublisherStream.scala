@@ -3,10 +3,14 @@ package zio.sqs
 import java.util.function.BiFunction
 
 import software.amazon.awssdk.services.sqs.SqsAsyncClient
-import software.amazon.awssdk.services.sqs.model.{SendMessageBatchRequest, SendMessageBatchRequestEntry, SendMessageBatchResponse}
+import software.amazon.awssdk.services.sqs.model.{
+  SendMessageBatchRequest,
+  SendMessageBatchRequestEntry,
+  SendMessageBatchResponse
+}
 import zio.clock.Clock
-import zio.stream.{Sink, Stream, ZStream}
-import zio.{IO, Schedule, Task}
+import zio.stream.{ Sink, Stream, ZStream }
+import zio.{ IO, Schedule, Task }
 
 import scala.jdk.CollectionConverters._
 

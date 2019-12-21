@@ -2,7 +2,7 @@ package zio.sqs
 
 import software.amazon.awssdk.services.sqs.SqsAsyncClient
 import software.amazon.awssdk.services.sqs.model._
-import zio.{IO, Task}
+import zio.{ IO, Task }
 
 import scala.jdk.CollectionConverters._
 

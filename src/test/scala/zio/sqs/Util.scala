@@ -1,7 +1,7 @@
 package zio.sqs
 
 import zio.random.Random
-import zio.test.{Gen, Sized}
+import zio.test.{ Gen, Sized }
 
 object Util {
 

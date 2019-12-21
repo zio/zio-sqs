@@ -2,11 +2,11 @@ package zio.sqs
 
 import java.net.URI
 
-import org.elasticmq.rest.sqs.{SQSRestServer, SQSRestServerBuilder}
-import software.amazon.awssdk.auth.credentials.{AwsBasicCredentials, StaticCredentialsProvider}
+import org.elasticmq.rest.sqs.{ SQSRestServer, SQSRestServerBuilder }
+import software.amazon.awssdk.auth.credentials.{ AwsBasicCredentials, StaticCredentialsProvider }
 import software.amazon.awssdk.regions.Region
 import software.amazon.awssdk.services.sqs.SqsAsyncClient
-import zio.{Task, UIO, ZIO, ZManaged}
+import zio.{ Task, UIO, ZIO, ZManaged }
 
 object ZioSqsMockServer {
   private val staticCredentialsProvider: StaticCredentialsProvider =

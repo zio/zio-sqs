@@ -5,6 +5,6 @@ import zio.test.{ Gen, Sized }
 
 object Util {
 
-  def stringGen(n: Int): Gen[Random with Sized, List[String]] = Gen.listOfN(n)(Gen.string(Gen.printableChar))
+  def listOfStringsN(n: Int): Gen[Random with Sized, List[String]] = Gen.listOfN(n)(Gen.string(Gen.printableChar))
 
 }

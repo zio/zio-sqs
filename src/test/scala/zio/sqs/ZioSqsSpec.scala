@@ -69,7 +69,7 @@ object ZioSqsSpec
 object ZioSqsSpecUtil {
   private val queueName = "TestQueue"
 
-  val gen: Gen[Random with Sized, List[String]] = Util.stringGen(10)
+  val gen: Gen[Random with Sized, List[String]] = Util.listOfStringsN(10)
 
   def sendAndGet(messages: Seq[String], settings: SqsStreamSettings): ZIO[Any, Throwable, List[Message]] =
     for {

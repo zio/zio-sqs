@@ -15,13 +15,13 @@ object SqsPublishEventSpec
             .build()
 
           val e = SqsPublishEvent(
-            body = "1",
+            data = "1",
             attributes = Map("Name" -> attr),
             groupId = Some("2"),
             deduplicationId = Some("3")
           )
 
-          assert(e.body, equalTo("1")) &&
+          assert(e.data, equalTo("1")) &&
           assert(e.attributes.size, equalTo(1)) &&
           assert(e.groupId, equalTo(Some("2"))) &&
           assert(e.deduplicationId, equalTo(Some("3")))
@@ -31,7 +31,7 @@ object SqsPublishEventSpec
             body = "1"
           )
 
-          assert(e.body, equalTo("1")) &&
+          assert(e.data, equalTo("1")) &&
           assert(e.attributes.size, equalTo(0)) &&
           assert(e.groupId, equalTo(None)) &&
           assert(e.deduplicationId, equalTo(None))

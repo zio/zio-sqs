@@ -11,6 +11,7 @@ import zio.duration._
 import zio.sqs.SqsPublishStreamSpecUtil._
 import zio.sqs.SqsPublisherStream.{ SqsRequest, SqsRequestEntry, SqsResponseErrorEntry }
 import zio.sqs.ZioSqsMockServer._
+import zio.sqs.serialization.Serializer
 import zio.stream.{ Sink, Stream }
 import zio.test.Assertion._
 import zio.test._
@@ -37,14 +38,14 @@ object SqsPublishStreamSpec
             .build()
 
           val pe = SqsPublishEvent(
-            body = "A",
+            data = "A",
             attributes = Map("Name" -> attr),
             groupId = Some("g1"),
             deduplicationId = Some("d1")
           )
 
           for {
-            done         <- Promise.make[Throwable, SqsPublishErrorOrResult]
+            done         <- Promise.make[Throwable, SqsPublishErrorOrResult[String]]
             requestEntry = SqsRequestEntry(pe, done, 10)
             isDone       <- requestEntry.done.isDone
           } yield {
@@ -61,7 +62,7 @@ object SqsPublishStreamSpec
             .build()
 
           val pe = SqsPublishEvent(
-            body = "A",
+            data = "A",
             attributes = Map("Name" -> attr),
             groupId = Some("g1"),
             deduplicationId = Some("d1")
@@ -80,7 +81,7 @@ object SqsPublishStreamSpec
             .build()
 
           for {
-            done         <- Promise.make[Throwable, SqsPublishErrorOrResult]
+            done         <- Promise.make[Throwable, SqsPublishErrorOrResult[String]]
             requestEntry = SqsRequestEntry(pe, done, 10)
             request      = SqsRequest(batchReq, List(requestEntry))
           } yield {
@@ -96,7 +97,7 @@ object SqsPublishStreamSpec
           val eventError = SqsPublishEventError(errEntry, event)
 
           for {
-            done     <- Promise.make[Throwable, SqsPublishErrorOrResult]
+            done     <- Promise.make[Throwable, SqsPublishErrorOrResult[String]]
             errEntry = SqsResponseErrorEntry(done, eventError)
             isDone   <- errEntry.done.isDone
           } yield {
@@ -111,7 +112,7 @@ object SqsPublishStreamSpec
           val bodies        = rs.map(_ + 'A').map(_.toChar.toString)
           val retries       = List(1, 2, retryMaxCount, 3)
           for {
-            dones          <- ZIO.traverse(Range(0, 4))(_ => Promise.make[Throwable, SqsPublishErrorOrResult])
+            dones          <- ZIO.traverse(Range(0, 4))(_ => Promise.make[Throwable, SqsPublishErrorOrResult[String]])
             requestEntries = bodies.zip(dones).zip(retries).map { case ((a, b), c) => SqsRequestEntry(SqsPublishEvent(a), b, c) }
             m              = ids.zip(requestEntries).toMap
             resultEntry0   = SendMessageBatchResultEntry.builder().id("0").build()
@@ -138,7 +139,7 @@ object SqsPublishStreamSpec
           val bodies        = rs.map(_ + 'A').map(_.toChar.toString)
           val retries       = List(1, 2, retryMaxCount, 3)
           for {
-            dones          <- ZIO.traverse(Range(0, 4))(_ => Promise.make[Throwable, SqsPublishErrorOrResult])
+            dones          <- ZIO.traverse(Range(0, 4))(_ => Promise.make[Throwable, SqsPublishErrorOrResult[String]])
             requestEntries = bodies.zip(dones).zip(retries).map { case ((a, b), c) => SqsRequestEntry(SqsPublishEvent(a), b, c) }
             m              = ids.zip(requestEntries).toMap
             resultEntry0   = SendMessageBatchResultEntry.builder().id("0").build()
@@ -161,9 +162,9 @@ object SqsPublishStreamSpec
             assert(successfulEntries.toList.size, equalTo(1)) &&
             assert(retryableEntries.toList.size, equalTo(1)) &&
             assert(errorsEntries.toList.size, equalTo(2)) &&
-            assert(successfulEntries.toList.map(_.event.body), hasSameElements(List("A"))) &&
-            assert(retryableEntries.toList.map(_.event.body), hasSameElements(List("B"))) &&
-            assert(errorsEntries.toList.map(_.error.event.body), hasSameElements(List("C", "D")))
+            assert(successfulEntries.toList.map(_.event.data), hasSameElements(List("A"))) &&
+            assert(retryableEntries.toList.map(_.event.data), hasSameElements(List("B"))) &&
+            assert(errorsEntries.toList.map(_.error.event.data), hasSameElements(List("C", "D")))
           }
         },
         testM("buildSendMessageBatchRequest creates a new request") {
@@ -177,13 +178,13 @@ object SqsPublishStreamSpec
 
           val events = List(
             SqsPublishEvent(
-              body = "A",
+              data = "A",
               attributes = Map("Name" -> attr),
               groupId = Some("g1"),
               deduplicationId = Some("d1")
             ),
             SqsPublishEvent(
-              body = "B",
+              data = "B",
               attributes = Map.empty[String, MessageAttributeValue],
               groupId = Some("g2"),
               deduplicationId = Some("d2")
@@ -193,11 +194,11 @@ object SqsPublishStreamSpec
           for {
             reqEntries <- ZIO.traverse(events) { event =>
                            for {
-                             done <- Promise.make[Throwable, SqsPublishErrorOrResult]
-                           } yield SqsRequestEntry(event, done, 0)
+                             done <- Promise.make[Throwable, SqsPublishErrorOrResult[String]]
+                           } yield SqsRequestEntry[String](event, done, 0)
                          }
           } yield {
-            val req = SqsPublisherStream.buildSendMessageBatchRequest(queueUrl, reqEntries)
+            val req = SqsPublisherStream.buildSendMessageBatchRequest[String](queueUrl, Serializer.serializeString)(reqEntries)
 
             val innerReq        = req.inner
             val innerReqEntries = req.inner.entries().asScala
@@ -228,7 +229,7 @@ object SqsPublishStreamSpec
                        .listOfStringsN(eventCount)
                        .sample
                        .map(_.value.map(SqsPublishEvent(_)))
-                       .run(Sink.await[List[SqsPublishEvent]])
+                       .run(Sink.await[List[SqsPublishEvent[String]]])
             server     <- serverResource
             client     <- clientResource
             retryQueue <- queueResource(16)
@@ -236,21 +237,22 @@ object SqsPublishStreamSpec
                       _ =>
                         client.use {
                           c =>
-                            retryQueue.use { q =>
-                              for {
-                                _        <- Utils.createQueue(c, queueName)
-                                queueUrl <- Utils.getQueueUrl(c, queueName)
-                                reqEntries <- ZIO.traverse(events) { event =>
-                                               for {
-                                                 done <- Promise.make[Throwable, SqsPublishErrorOrResult]
-                                               } yield SqsRequestEntry(event, done, 0)
-                                             }
-                                req        = SqsPublisherStream.buildSendMessageBatchRequest(queueUrl, reqEntries)
-                                retryDelay = 1.millisecond
-                                retryCount = 1
-                                reqSender  = SqsPublisherStream.runSendMessageBatchRequest(c, q, retryDelay, retryCount) _
-                                _          <- reqSender(req)
-                              } yield ZIO.traverse(reqEntries)(entry => entry.done.await)
+                            retryQueue.use {
+                              q =>
+                                for {
+                                  _        <- Utils.createQueue(c, queueName)
+                                  queueUrl <- Utils.getQueueUrl(c, queueName)
+                                  reqEntries <- ZIO.traverse(events) { event =>
+                                                 for {
+                                                   done <- Promise.make[Throwable, SqsPublishErrorOrResult[String]]
+                                                 } yield SqsRequestEntry[String](event, done, 0)
+                                               }
+                                  req        = SqsPublisherStream.buildSendMessageBatchRequest[String](queueUrl, Serializer.serializeString)(reqEntries)
+                                  retryDelay = 1.millisecond
+                                  retryCount = 1
+                                  reqSender  = SqsPublisherStream.runSendMessageBatchRequest(c, q, retryDelay, retryCount) _
+                                  _          <- reqSender(req)
+                                } yield ZIO.traverse(reqEntries)(entry => entry.done.await)
                             }
                         }
                     }
@@ -269,24 +271,25 @@ object SqsPublishStreamSpec
                        .listOfStringsN(eventCount)
                        .sample
                        .map(_.value.map(SqsPublishEvent(_)))
-                       .run(Sink.await[List[SqsPublishEvent]])
+                       .run(Sink.await[List[SqsPublishEvent[String]]])
             server <- serverResource
             client <- clientResource
             results <- server.use {
                         _ =>
-                          client.use { c =>
-                            for {
-                              _           <- withFastClock.fork
-                              _           <- Utils.createQueue(c, queueName)
-                              queueUrl    <- Utils.getQueueUrl(c, queueName)
-                              producer    <- Task.succeed(SqsPublisherStream.producer(c, queueUrl, settings))
-                              resultQueue <- Queue.unbounded[SqsPublishErrorOrResult]
-                              _ <- producer.use { p =>
-                                    p.sendStream(Stream(events: _*))
-                                      .foreach(resultQueue.offer) // replace with .via when ZIO > RC17 is released -- Sink.collectAll[SqsPublishErrorOrResult]
-                                  }.fork
-                              results <- ZIO.sequence(List.fill(eventCount)(resultQueue.take))
-                            } yield results
+                          client.use {
+                            c =>
+                              for {
+                                _           <- withFastClock.fork
+                                _           <- Utils.createQueue(c, queueName)
+                                queueUrl    <- Utils.getQueueUrl(c, queueName)
+                                producer    <- Task.succeed(SqsPublisherStream.producer(c, queueUrl, Serializer.serializeString, settings))
+                                resultQueue <- Queue.unbounded[SqsPublishErrorOrResult[String]]
+                                _ <- producer.use { p =>
+                                      p.sendStream(Stream(events: _*))
+                                        .foreach(resultQueue.offer) // replace with .via when ZIO > RC17 is released -- Sink.collectAll[SqsPublishErrorOrResult]
+                                    }.fork
+                                results <- ZIO.sequence(List.fill(eventCount)(resultQueue.take))
+                              } yield results
                           }
                       }
           } yield {
@@ -304,7 +307,7 @@ object SqsPublishStreamSpec
                        .listOfStringsN(eventCount)
                        .sample
                        .map(_.value.map(SqsPublishEvent(_)))
-                       .run(Sink.await[List[SqsPublishEvent]])
+                       .run(Sink.await[List[SqsPublishEvent[String]]])
             server <- serverResource
             client <- clientResource
             results <- server.use { _ =>
@@ -313,7 +316,7 @@ object SqsPublishStreamSpec
                             _        <- withFastClock.fork
                             _        <- Utils.createQueue(c, queueName)
                             queueUrl <- Utils.getQueueUrl(c, queueName)
-                            producer <- Task.succeed(SqsPublisherStream.producer(c, queueUrl, settings))
+                            producer <- Task.succeed(SqsPublisherStream.producer(c, queueUrl, Serializer.serializeString, settings))
                             results <- producer.use { p =>
                                         ZIO.traversePar(events)(event => p.produce(event))
                                       }
@@ -335,7 +338,7 @@ object SqsPublishStreamSpec
                        .listOfStringsN(eventCount)
                        .sample
                        .map(_.value.map(SqsPublishEvent(_)))
-                       .run(Sink.await[List[SqsPublishEvent]])
+                       .run(Sink.await[List[SqsPublishEvent[String]]])
             server <- serverResource
             client <- clientResource
             results <- server.use { _ =>
@@ -344,7 +347,7 @@ object SqsPublishStreamSpec
                             _        <- withFastClock.fork
                             _        <- Utils.createQueue(c, queueName)
                             queueUrl <- Utils.getQueueUrl(c, queueName)
-                            producer <- Task.succeed(SqsPublisherStream.producer(c, queueUrl, settings))
+                            producer <- Task.succeed(SqsPublisherStream.producer(c, queueUrl, Serializer.serializeString, settings))
                             results <- producer.use { p =>
                                         p.produceBatch(events)
                                       }
@@ -366,7 +369,7 @@ object SqsPublishStreamSpec
                        .listOfStringsN(eventCount)
                        .sample
                        .map(_.value.map(SqsPublishEvent(_)))
-                       .run(Sink.await[List[SqsPublishEvent]])
+                       .run(Sink.await[List[SqsPublishEvent[String]]])
             server <- serverResource
             client <- clientResource
             results <- server.use { _ =>
@@ -375,7 +378,7 @@ object SqsPublishStreamSpec
                             _        <- withFastClock.fork
                             _        <- Utils.createQueue(c, queueName)
                             queueUrl <- Utils.getQueueUrl(c, queueName)
-                            producer <- Task.succeed(SqsPublisherStream.producer(c, queueUrl, settings))
+                            producer <- Task.succeed(SqsPublisherStream.producer(c, queueUrl, Serializer.serializeString, settings))
                             results <- producer.use { p =>
                                         Stream.succeed(events).run(p.sendSink)
                                       }
@@ -419,17 +422,17 @@ object SqsPublishStreamSpec
 
           for {
             _        <- withFastClock.fork
-            producer <- Task.succeed(SqsPublisherStream.producer(client, queueUrl, settings))
+            producer <- Task.succeed(SqsPublisherStream.producer(client, queueUrl, Serializer.serializeString, settings))
             results <- producer.use { p =>
                         p.produceBatch(events)
                       }
           } yield {
             val successes = results.filter(_.isRight).collect {
-              case Right(x) => x.body
+              case Right(x) => x.data
             }
 
             val failures = results.filter(_.isLeft).collect {
-              case Left(x) => x.event.body
+              case Left(x) => x.event.data
             }
 
             assert(results.size, equalTo(events.size)) &&
@@ -473,13 +476,13 @@ object SqsPublishStreamSpec
 
           for {
             _        <- withFastClock.fork
-            producer <- Task.succeed(SqsPublisherStream.producer(client, queueUrl, settings))
+            producer <- Task.succeed(SqsPublisherStream.producer(client, queueUrl, Serializer.serializeString, settings))
             results <- producer.use { p =>
                         p.produceBatch(events)
                       }
           } yield {
             val successes = results.filter(_.isRight).collect {
-              case Right(x) => x.body
+              case Right(x) => x.data
             }
 
             assert(results.size, equalTo(events.size)) &&
@@ -517,13 +520,13 @@ object SqsPublishStreamSpec
 
           for {
             _        <- withFastClock.fork
-            producer <- Task.succeed(SqsPublisherStream.producer(client, queueUrl, settings))
+            producer <- Task.succeed(SqsPublisherStream.producer(client, queueUrl, Serializer.serializeString, settings))
             results <- producer.use { p =>
                         p.produceBatch(events)
                       }
           } yield {
             val failures = results.filter(_.isLeft).collect {
-              case Left(x) => x.event.body
+              case Left(x) => x.event.data
             }
 
             assert(results.size, equalTo(events.size)) &&
@@ -549,10 +552,10 @@ object SqsPublishStreamSpec
 
           for {
             _        <- withFastClock.fork
-            producer <- Task.succeed(SqsPublisherStream.producer(client, queueUrl, settings))
+            producer <- Task.succeed(SqsPublisherStream.producer(client, queueUrl, Serializer.serializeString, settings))
             errOrResults <- producer.use { p =>
-              p.produceBatch(events)
-            }.either
+                             p.produceBatch(events)
+                           }.either
           } yield {
             assert(errOrResults.isLeft, equalTo(true))
           }
@@ -563,8 +566,8 @@ object SqsPublishStreamSpec
 
 object SqsPublishStreamSpecUtil {
 
-  def queueResource(capacity: Int): Task[ZManaged[Any, Throwable, Queue[SqsRequestEntry]]] = Task.succeed {
-    Queue.bounded[SqsRequestEntry](capacity).toManaged(_.shutdown)
+  def queueResource(capacity: Int): Task[ZManaged[Any, Throwable, Queue[SqsRequestEntry[String]]]] = Task.succeed {
+    Queue.bounded[SqsRequestEntry[String]](capacity).toManaged(_.shutdown)
   }
 
   def withFastClock: ZIO[TestClock with Live[Clock], Nothing, Int] =

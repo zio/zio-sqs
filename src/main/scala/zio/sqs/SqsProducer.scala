@@ -4,14 +4,14 @@ import zio.Task
 import zio.clock.Clock
 import zio.stream.{ Stream, ZSink, ZStream }
 
-trait SqsProducer {
+trait SqsProducer[T] {
 
-  def produce(e: SqsPublishEvent): Task[SqsPublishErrorOrResult]
+  def produce(e: SqsPublishEvent[T]): Task[SqsPublishErrorOrResult[T]]
 
-  def produceBatch(es: Iterable[SqsPublishEvent]): Task[List[SqsPublishErrorOrResult]]
+  def produceBatch(es: Iterable[SqsPublishEvent[T]]): Task[List[SqsPublishErrorOrResult[T]]]
 
-  def sendStream: Stream[Throwable, SqsPublishEvent] => ZStream[Clock, Throwable, SqsPublishErrorOrResult]
+  def sendStream: Stream[Throwable, SqsPublishEvent[T]] => ZStream[Clock, Throwable, SqsPublishErrorOrResult[T]]
 
-  def sendSink: ZSink[Any, Throwable, Nothing, Iterable[SqsPublishEvent], Unit] =
+  def sendSink: ZSink[Any, Throwable, Nothing, Iterable[SqsPublishEvent[T]], Unit] =
     ZSink.drain.contramapM(es => produceBatch(es))
 }

@@ -2,6 +2,6 @@ package zio
 
 package object sqs {
 
-  type SqsPublishErrorOrResult = Either[SqsPublishEventError, SqsPublishEvent]
+  type SqsPublishErrorOrResult[T] = Either[SqsPublishEventError[T], SqsPublishEvent[T]]
 
 }

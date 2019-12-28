@@ -530,6 +530,32 @@ object SqsPublishStreamSpec
             assert(failures, hasSameElements(List("A", "B", "C"))) &&
             assert(invokeCount.get(), equalTo((settings.retryMaxCount + 1) * events.size))
           }
+        },
+        testM("a SendMessageBatchRequest failed with an exception should fail") {
+          val queueName                            = "fail-with-exception-" + UUID.randomUUID().toString
+          val queueUrl                             = s"sqs://${queueName}"
+          val settings: SqsPublisherStreamSettings = SqsPublisherStreamSettings()
+          val events                               = List("A").map(SqsPublishEvent(_))
+
+          val invokeCount = new AtomicInteger(0)
+          val client = new SqsAsyncClient {
+            override def serviceName(): String = "test-sqs-async-client"
+            override def close(): Unit         = ()
+            override def sendMessageBatch(sendMessageBatchRequest: SendMessageBatchRequest): CompletableFuture[SendMessageBatchResponse] = {
+              invokeCount.addAndGet(1)
+              CompletableFuture.failedFuture(new RuntimeException("unexpected failure"))
+            }
+          }
+
+          for {
+            _        <- withFastClock.fork
+            producer <- Task.succeed(SqsPublisherStream.producer(client, queueUrl, settings))
+            errOrResults <- producer.use { p =>
+              p.produceBatch(events)
+            }.either
+          } yield {
+            assert(errOrResults.isLeft, equalTo(true))
+          }
         }
       ),
       List(TestAspect.executionStrategy(ExecutionStrategy.Sequential))

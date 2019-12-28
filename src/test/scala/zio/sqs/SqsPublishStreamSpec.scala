@@ -546,7 +546,9 @@ object SqsPublishStreamSpec
             override def close(): Unit         = ()
             override def sendMessageBatch(sendMessageBatchRequest: SendMessageBatchRequest): CompletableFuture[SendMessageBatchResponse] = {
               invokeCount.addAndGet(1)
-              CompletableFuture.failedFuture(new RuntimeException("unexpected failure"))
+              CompletableFuture.supplyAsync[SendMessageBatchResponse] { () =>
+                throw new RuntimeException("unexpected failure")
+              }
             }
           }
 

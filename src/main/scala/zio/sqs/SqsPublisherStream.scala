@@ -8,7 +8,7 @@ import zio._
 import zio.clock.Clock
 import zio.duration.Duration
 import zio.sqs.serialization.Serializer
-import zio.stream.{ Sink, Stream, ZStream }
+import zio.stream.{ Sink, Stream, ZSink, ZStream }
 
 import scala.jdk.CollectionConverters._
 
@@ -38,14 +38,17 @@ object SqsPublisherStream {
       _ <- stream.runDrain.toManaged_.fork
     } yield new SqsProducer[T] {
 
-      override def produce(e: SqsPublishEvent[T]): Task[SqsPublishErrorOrResult[T]] =
+      override def produceE(e: SqsPublishEvent[T]): Task[SqsPublishErrorOrResult[T]] =
         for {
           done     <- Promise.make[Throwable, SqsPublishErrorOrResult[T]]
           _        <- eventQueue.offer(SqsRequestEntry[T](e, done, 0))
           response <- done.await
         } yield response
 
-      override def produceBatch(es: Iterable[SqsPublishEvent[T]]): Task[List[SqsPublishErrorOrResult[T]]] =
+      override def produce(e: SqsPublishEvent[T]): Task[SqsPublishEvent[T]] =
+        produceE(e).flatMap(e => ZIO.fromEither(e))
+
+      override def produceBatchE(es: Iterable[SqsPublishEvent[T]]): Task[List[SqsPublishErrorOrResult[T]]] =
         ZIO
           .traverse(es) { e =>
             for {
@@ -54,8 +57,17 @@ object SqsPublisherStream {
           }
           .flatMap(es => eventQueue.offerAll(es) *> ZIO.collectAllPar(es.map(_.done.await)))
 
-      override def sendStream: Stream[Throwable, SqsPublishEvent[T]] => ZStream[Any, Throwable, SqsPublishErrorOrResult[T]] =
+      override def produceBatch(es: Iterable[SqsPublishEvent[T]]): Task[List[SqsPublishEvent[T]]] =
+        produceBatchE(es).flatMap(rs => ZIO.traverse(rs)(r => ZIO.fromEither(r)))
+
+      override def sendStreamE: Stream[Throwable, SqsPublishEvent[T]] => ZStream[Any, Throwable, SqsPublishErrorOrResult[T]] =
+        es => es.mapMParUnordered(settings.batchSize)(produceE)
+
+      override def sendStream: Stream[Throwable, SqsPublishEvent[T]] => ZStream[Any, Throwable, SqsPublishEvent[T]] =
         es => es.mapMParUnordered(settings.batchSize)(produce)
+
+      override def sendSink: ZSink[Any, Throwable, Nothing, Iterable[SqsPublishEvent[T]], Unit] =
+        ZSink.drain.contramapM(es => produceBatch(es))
     }
   }
 

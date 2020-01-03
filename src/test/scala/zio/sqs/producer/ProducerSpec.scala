@@ -9,15 +9,15 @@ import software.amazon.awssdk.services.sqs.model._
 import zio.clock.Clock
 import zio.duration._
 import zio.sqs.ZioSqsMockServer._
-import zio.sqs.producer.Producer.{SqsRequest, SqsRequestEntry, SqsResponseErrorEntry}
+import zio.sqs.producer.Producer.{ SqsRequest, SqsRequestEntry, SqsResponseErrorEntry }
 import zio.sqs.producer.SqsPublishStreamSpecUtil._
 import zio.sqs.serialization.Serializer
-import zio.sqs.{Util, Utils}
-import zio.stream.{Sink, Stream}
+import zio.sqs.{ Util, Utils }
+import zio.stream.{ Sink, Stream }
 import zio.test.Assertion._
 import zio.test._
-import zio.test.environment.{Live, TestClock}
-import zio.{test => _, _}
+import zio.test.environment.{ Live, TestClock }
+import zio.{ test => _, _ }
 
 import scala.jdk.CollectionConverters._
 
@@ -223,9 +223,9 @@ object ProducerSpec
           }
         },
         testM("runSendMessageBatchRequest can be executed") {
-          val queueName                            = "runSendMessageBatchRequest-" + UUID.randomUUID().toString
+          val queueName                  = "runSendMessageBatchRequest-" + UUID.randomUUID().toString
           val settings: ProducerSettings = ProducerSettings()
-          val eventCount                           = settings.batchSize
+          val eventCount                 = settings.batchSize
           for {
             events <- Util
                        .listOfStringsN(eventCount)
@@ -264,9 +264,9 @@ object ProducerSpec
           }
         },
         testM("events can be published using sendStream and return the results") {
-          val queueName                            = "sendStream-" + UUID.randomUUID().toString
+          val queueName                  = "sendStream-" + UUID.randomUUID().toString
           val settings: ProducerSettings = ProducerSettings()
-          val eventCount                           = (settings.batchSize * 2) + 3
+          val eventCount                 = (settings.batchSize * 2) + 3
 
           for {
             events <- Util
@@ -300,11 +300,11 @@ object ProducerSpec
           }
         },
         testM("events can be published using sendStream and fail the task on error") {
-          val queueName                            = "produce-" + UUID.randomUUID().toString
-          val queueUrl                             = s"sqs://${queueName}"
+          val queueName                  = "produce-" + UUID.randomUUID().toString
+          val queueUrl                   = s"sqs://${queueName}"
           val settings: ProducerSettings = ProducerSettings()
-          val events                               = List("P1").map(ProducerEvent(_))
-          val client                               = failUnrecoverableClient
+          val events                     = List("P1").map(ProducerEvent(_))
+          val client                     = failUnrecoverableClient
 
           for {
             _        <- withFastClock.fork
@@ -317,9 +317,9 @@ object ProducerSpec
           }
         },
         testM("events can be published using produce and return the results") {
-          val queueName                            = "produce-" + UUID.randomUUID().toString
+          val queueName                  = "produce-" + UUID.randomUUID().toString
           val settings: ProducerSettings = ProducerSettings()
-          val eventCount                           = settings.batchSize
+          val eventCount                 = settings.batchSize
 
           for {
             events <- Util
@@ -348,11 +348,11 @@ object ProducerSpec
           }
         },
         testM("events can be pushed using produce and fail the task on error") {
-          val queueName                            = "produce-" + UUID.randomUUID().toString
-          val queueUrl                             = s"sqs://${queueName}"
+          val queueName                  = "produce-" + UUID.randomUUID().toString
+          val queueUrl                   = s"sqs://${queueName}"
           val settings: ProducerSettings = ProducerSettings()
-          val events                               = List("A").map(ProducerEvent(_))
-          val client                               = failUnrecoverableClient
+          val events                     = List("A").map(ProducerEvent(_))
+          val client                     = failUnrecoverableClient
 
           for {
             _        <- withFastClock.fork
@@ -365,9 +365,9 @@ object ProducerSpec
           }
         },
         testM("events can be published using produceBatch and return the results") {
-          val queueName                            = "produceBatch-" + UUID.randomUUID().toString
+          val queueName                  = "produceBatch-" + UUID.randomUUID().toString
           val settings: ProducerSettings = ProducerSettings()
-          val eventCount                           = settings.batchSize * 2
+          val eventCount                 = settings.batchSize * 2
 
           for {
             events <- Util
@@ -396,11 +396,11 @@ object ProducerSpec
           }
         },
         testM("events can be published using produceBatch and fail the task on error") {
-          val queueName                            = "produceBatch-" + UUID.randomUUID().toString
-          val queueUrl                             = s"sqs://${queueName}"
+          val queueName                  = "produceBatch-" + UUID.randomUUID().toString
+          val queueUrl                   = s"sqs://${queueName}"
           val settings: ProducerSettings = ProducerSettings()
-          val events                               = List("B1").map(ProducerEvent(_))
-          val client                               = failUnrecoverableClient
+          val events                     = List("B1").map(ProducerEvent(_))
+          val client                     = failUnrecoverableClient
 
           for {
             _        <- withFastClock.fork
@@ -413,9 +413,9 @@ object ProducerSpec
           }
         },
         testM("events can be published using sendSink") {
-          val queueName                            = "sendSink-" + UUID.randomUUID().toString
+          val queueName                  = "sendSink-" + UUID.randomUUID().toString
           val settings: ProducerSettings = ProducerSettings()
-          val eventCount                           = settings.batchSize
+          val eventCount                 = settings.batchSize
 
           for {
             events <- Util
@@ -443,10 +443,10 @@ object ProducerSpec
           }
         },
         testM("events that published using sendSink and generate an exception on send should fail the sink") {
-          val queueName                            = "sendSink-" + UUID.randomUUID().toString
-          val queueUrl                             = s"sqs://${queueName}"
+          val queueName                  = "sendSink-" + UUID.randomUUID().toString
+          val queueUrl                   = s"sqs://${queueName}"
           val settings: ProducerSettings = ProducerSettings()
-          val events                               = List("A").map(ProducerEvent(_))
+          val events                     = List("A").map(ProducerEvent(_))
 
           val client = new SqsAsyncClient {
             override def serviceName(): String = "test-sqs-async-client"
@@ -468,11 +468,11 @@ object ProducerSpec
           }
         },
         testM("events that published using sendSink and return an unrecoverable error should fail the sink on error") {
-          val queueName                            = "sendSink-" + UUID.randomUUID().toString
-          val queueUrl                             = s"sqs://${queueName}"
+          val queueName                  = "sendSink-" + UUID.randomUUID().toString
+          val queueUrl                   = s"sqs://${queueName}"
           val settings: ProducerSettings = ProducerSettings()
-          val events                               = List("A").map(ProducerEvent(_))
-          val client                               = failUnrecoverableClient
+          val events                     = List("A").map(ProducerEvent(_))
+          val client                     = failUnrecoverableClient
 
           for {
             _        <- withFastClock.fork
@@ -485,10 +485,10 @@ object ProducerSpec
           }
         },
         testM("submitted events can succeed and fail if there are unrecoverable errors") {
-          val queueName                            = "success-and-unrecoverable-failures-" + UUID.randomUUID().toString
-          val queueUrl                             = s"sqs://${queueName}"
+          val queueName                  = "success-and-unrecoverable-failures-" + UUID.randomUUID().toString
+          val queueUrl                   = s"sqs://${queueName}"
           val settings: ProducerSettings = ProducerSettings()
-          val events                               = List("A", "B", "C").map(ProducerEvent(_))
+          val events                     = List("A", "B", "C").map(ProducerEvent(_))
 
           val client = new SqsAsyncClient {
             override def serviceName(): String = "test-sqs-async-client"
@@ -536,10 +536,10 @@ object ProducerSpec
           }
         },
         testM("submitted events can be republished if there are recoverable errors") {
-          val queueName                            = "success-and-recoverable-failures-" + UUID.randomUUID().toString
-          val queueUrl                             = s"sqs://${queueName}"
+          val queueName                  = "success-and-recoverable-failures-" + UUID.randomUUID().toString
+          val queueUrl                   = s"sqs://${queueName}"
           val settings: ProducerSettings = ProducerSettings()
-          val events                               = List("A", "B", "C").map(ProducerEvent(_))
+          val events                     = List("A", "B", "C").map(ProducerEvent(_))
 
           val invokeCount = new AtomicInteger(0)
           val client = new SqsAsyncClient {
@@ -586,10 +586,10 @@ object ProducerSpec
           }
         },
         testM("if the number of recoverable retries exceeds the limit, messages fail") {
-          val queueName                            = "fail-when-retry-limit-reached-" + UUID.randomUUID().toString
-          val queueUrl                             = s"sqs://${queueName}"
+          val queueName                  = "fail-when-retry-limit-reached-" + UUID.randomUUID().toString
+          val queueUrl                   = s"sqs://${queueName}"
           val settings: ProducerSettings = ProducerSettings()
-          val events                               = List("A", "B", "C").map(ProducerEvent(_))
+          val events                     = List("A", "B", "C").map(ProducerEvent(_))
 
           val invokeCount = new AtomicInteger(0)
           val client = new SqsAsyncClient {
@@ -630,10 +630,10 @@ object ProducerSpec
           }
         },
         testM("a SendMessageBatchRequest failed with an exception should fail") {
-          val queueName                            = "fail-with-exception-" + UUID.randomUUID().toString
-          val queueUrl                             = s"sqs://${queueName}"
+          val queueName                  = "fail-with-exception-" + UUID.randomUUID().toString
+          val queueUrl                   = s"sqs://${queueName}"
           val settings: ProducerSettings = ProducerSettings()
-          val events                               = List("A").map(ProducerEvent(_))
+          val events                     = List("A").map(ProducerEvent(_))
 
           val invokeCount = new AtomicInteger(0)
           val client = new SqsAsyncClient {

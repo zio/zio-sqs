@@ -2,7 +2,7 @@ package zio.sqs.producer
 
 import software.amazon.awssdk.services.sqs.model.MessageAttributeValue
 import zio.test.Assertion.equalTo
-import zio.test.{DefaultRunnableSpec, ExecutionStrategy, TestAspect, assert, suite, test}
+import zio.test._
 
 object ProducerEventSpec
     extends DefaultRunnableSpec(

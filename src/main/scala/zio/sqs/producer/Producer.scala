@@ -3,18 +3,12 @@ package zio.sqs.producer
 import java.util.function.BiFunction
 
 import software.amazon.awssdk.services.sqs.SqsAsyncClient
-import software.amazon.awssdk.services.sqs.model.{
-  BatchResultErrorEntry,
-  SendMessageBatchRequest,
-  SendMessageBatchRequestEntry,
-  SendMessageBatchResponse,
-  SendMessageBatchResultEntry
-}
+import software.amazon.awssdk.services.sqs.model._
 import zio.clock.Clock
 import zio.duration.Duration
 import zio.sqs.serialization.Serializer
 import zio.stream.{ Sink, Stream, ZSink, ZStream }
-import zio.{ Promise, Queue, RIO, Schedule, Task, ZIO, ZManaged }
+import zio._
 
 import scala.jdk.CollectionConverters._
 
@@ -184,14 +178,14 @@ object Producer {
   }
 
   private[sqs] final case class SqsRequestEntry[T](
-                                                    event: ProducerEvent[T],
-                                                    done: Promise[Throwable, ErrorOrEvent[T]],
-                                                    retryCount: Int
+    event: ProducerEvent[T],
+    done: Promise[Throwable, ErrorOrEvent[T]],
+    retryCount: Int
   )
 
   private[sqs] final case class SqsResponseErrorEntry[T](
-                                                          done: Promise[Throwable, ErrorOrEvent[T]],
-                                                          error: ProducerError[T]
+    done: Promise[Throwable, ErrorOrEvent[T]],
+    error: ProducerError[T]
   )
 
   private[sqs] final case class SqsRequest[T](

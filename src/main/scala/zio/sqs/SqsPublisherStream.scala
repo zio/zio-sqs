@@ -34,7 +34,7 @@ object SqsPublisherStream {
           Schedule.spaced(settings.duration)
         )
         .map(reqBuilder)
-        .mapMParUnordered(settings.parallelism)(reqRunner)
+        .mapMPar(settings.parallelism)(reqRunner) // TODO: replace all `mapMPar` in this file with `mapMParUnordered` when zio/zio#2547 is fixed
       _ <- stream.runDrain.toManaged_.fork
     } yield new SqsProducer[T] {
 
@@ -61,10 +61,10 @@ object SqsPublisherStream {
         produceBatchE(es).flatMap(rs => ZIO.traverse(rs)(r => ZIO.fromEither(r)))
 
       override def sendStreamE: Stream[Throwable, SqsPublishEvent[T]] => ZStream[Any, Throwable, SqsPublishErrorOrResult[T]] =
-        es => es.mapMParUnordered(settings.batchSize)(produceE)
+        es => es.mapMPar(settings.batchSize)(produceE)
 
       override def sendStream: Stream[Throwable, SqsPublishEvent[T]] => ZStream[Any, Throwable, SqsPublishEvent[T]] =
-        es => es.mapMParUnordered(settings.batchSize)(produce)
+        es => es.mapMPar(settings.batchSize)(produce)
 
       override def sendSink: ZSink[Any, Throwable, Nothing, Iterable[SqsPublishEvent[T]], Unit] =
         ZSink.drain.contramapM(es => produceBatch(es))

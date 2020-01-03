@@ -284,7 +284,7 @@ object ProducerSpec
                                 _           <- withFastClock.fork
                                 _           <- Utils.createQueue(c, queueName)
                                 queueUrl    <- Utils.getQueueUrl(c, queueName)
-                                producer    <- Task.succeed(Producer.producer(c, queueUrl, Serializer.serializeString, settings))
+                                producer    <- Task.succeed(Producer.make(c, queueUrl, Serializer.serializeString, settings))
                                 resultQueue <- Queue.unbounded[ErrorOrEvent[String]]
                                 _ <- producer.use { p =>
                                       p.sendStreamE(Stream(events: _*))
@@ -308,7 +308,7 @@ object ProducerSpec
 
           for {
             _        <- withFastClock.fork
-            producer <- Task.succeed(Producer.producer(client, queueUrl, Serializer.serializeString, settings))
+            producer <- Task.succeed(Producer.make(client, queueUrl, Serializer.serializeString, settings))
             errOrResult <- producer.use { p =>
                             p.sendStream(Stream(events: _*)).runDrain.either
                           }
@@ -335,7 +335,7 @@ object ProducerSpec
                             _        <- withFastClock.fork
                             _        <- Utils.createQueue(c, queueName)
                             queueUrl <- Utils.getQueueUrl(c, queueName)
-                            producer <- Task.succeed(Producer.producer(c, queueUrl, Serializer.serializeString, settings))
+                            producer <- Task.succeed(Producer.make(c, queueUrl, Serializer.serializeString, settings))
                             results <- producer.use { p =>
                                         ZIO.traversePar(events)(event => p.produceE(event))
                                       }
@@ -356,7 +356,7 @@ object ProducerSpec
 
           for {
             _        <- withFastClock.fork
-            producer <- Task.succeed(Producer.producer(client, queueUrl, Serializer.serializeString, settings))
+            producer <- Task.succeed(Producer.make(client, queueUrl, Serializer.serializeString, settings))
             errOrResults <- producer.use { p =>
                              ZIO.traversePar(events)(event => p.produce(event))
                            }.either
@@ -383,7 +383,7 @@ object ProducerSpec
                             _        <- withFastClock.fork
                             _        <- Utils.createQueue(c, queueName)
                             queueUrl <- Utils.getQueueUrl(c, queueName)
-                            producer <- Task.succeed(Producer.producer(c, queueUrl, Serializer.serializeString, settings))
+                            producer <- Task.succeed(Producer.make(c, queueUrl, Serializer.serializeString, settings))
                             results <- producer.use { p =>
                                         p.produceBatchE(events)
                                       }
@@ -404,7 +404,7 @@ object ProducerSpec
 
           for {
             _        <- withFastClock.fork
-            producer <- Task.succeed(Producer.producer(client, queueUrl, Serializer.serializeString, settings))
+            producer <- Task.succeed(Producer.make(client, queueUrl, Serializer.serializeString, settings))
             errOrResults <- producer.use { p =>
                              p.produceBatch(events)
                            }.either
@@ -431,7 +431,7 @@ object ProducerSpec
                             _        <- withFastClock.fork
                             _        <- Utils.createQueue(c, queueName)
                             queueUrl <- Utils.getQueueUrl(c, queueName)
-                            producer <- Task.succeed(Producer.producer(c, queueUrl, Serializer.serializeString, settings))
+                            producer <- Task.succeed(Producer.make(c, queueUrl, Serializer.serializeString, settings))
                             results <- producer.use { p =>
                                         Stream.succeed(events).run(p.sendSink)
                                       }
@@ -459,7 +459,7 @@ object ProducerSpec
 
           for {
             _        <- withFastClock.fork
-            producer <- Task.succeed(Producer.producer(client, queueUrl, Serializer.serializeString, settings))
+            producer <- Task.succeed(Producer.make(client, queueUrl, Serializer.serializeString, settings))
             errOrResults <- producer.use { p =>
                              Stream.succeed(events).run(p.sendSink)
                            }.either
@@ -476,7 +476,7 @@ object ProducerSpec
 
           for {
             _        <- withFastClock.fork
-            producer <- Task.succeed(Producer.producer(client, queueUrl, Serializer.serializeString, settings))
+            producer <- Task.succeed(Producer.make(client, queueUrl, Serializer.serializeString, settings))
             errOrResults <- producer.use { p =>
                              Stream.succeed(events).run(p.sendSink)
                            }.either
@@ -517,7 +517,7 @@ object ProducerSpec
 
           for {
             _        <- withFastClock.fork
-            producer <- Task.succeed(Producer.producer(client, queueUrl, Serializer.serializeString, settings))
+            producer <- Task.succeed(Producer.make(client, queueUrl, Serializer.serializeString, settings))
             results <- producer.use { p =>
                         p.produceBatchE(events)
                       }
@@ -571,7 +571,7 @@ object ProducerSpec
 
           for {
             _        <- withFastClock.fork
-            producer <- Task.succeed(Producer.producer(client, queueUrl, Serializer.serializeString, settings))
+            producer <- Task.succeed(Producer.make(client, queueUrl, Serializer.serializeString, settings))
             results <- producer.use { p =>
                         p.produceBatchE(events)
                       }
@@ -615,7 +615,7 @@ object ProducerSpec
 
           for {
             _        <- withFastClock.fork
-            producer <- Task.succeed(Producer.producer(client, queueUrl, Serializer.serializeString, settings))
+            producer <- Task.succeed(Producer.make(client, queueUrl, Serializer.serializeString, settings))
             results <- producer.use { p =>
                         p.produceBatchE(events)
                       }
@@ -649,7 +649,7 @@ object ProducerSpec
 
           for {
             _        <- withFastClock.fork
-            producer <- Task.succeed(Producer.producer(client, queueUrl, Serializer.serializeString, settings))
+            producer <- Task.succeed(Producer.make(client, queueUrl, Serializer.serializeString, settings))
             errOrResults <- producer.use { p =>
                              p.produceBatchE(events)
                            }.either

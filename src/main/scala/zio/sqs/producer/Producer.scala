@@ -37,13 +37,13 @@ trait Producer[T] {
 
 object Producer {
 
-  def producer[R, T](
+  def make[R, T](
     client: SqsAsyncClient,
     queueUrl: String,
     serializer: Serializer[T],
     settings: ProducerSettings = ProducerSettings()
   ): ZManaged[R with Clock, Throwable, Producer[T]] = {
-    val eventQueueSize = nextPower2(settings.batchSize * settings.parallelism)
+    val eventQueueSize = nextPower2(settings.batchSize)
     for {
       eventQueue <- Queue.bounded[SqsRequestEntry[T]](eventQueueSize).toManaged(_.shutdown)
       failQueue  <- Queue.bounded[SqsRequestEntry[T]](eventQueueSize).toManaged(_.shutdown)

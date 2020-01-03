@@ -18,102 +18,99 @@ In order to use the connector, you need a `SqsAsyncClient`. Refer to the [AWS SD
 
 ### Publish messages
 
-Use `SqsPublisher.send` to publish messages to a queue.
+Use `Producer.make` to instantiate an instance of [Producer](src/main/scala/zio/sqs/producer/Producer.scala) trait that can be used to publish objects of type `T` to the queue.
 
 ```scala
-def send(
+def make[R, T](
     client: SqsAsyncClient,
     queueUrl: String,
-    msg: String,
-    settings: SqsPublisherSettings = SqsPublisherSettings()
-  ): Task[Unit]
+    serializer: Serializer[T],
+    settings: ProducerSettings = ProducerSettings()
+  ): ZManaged[R with Clock, Throwable, Producer[T]]
 ```
 
-`SqsPublisherSettings` allows your to configure a number of things:
+where:
 
-- `delaySeconds`: see the [related page on AWS docs](https://docs.aws.amazon.com/AWSSimpleQueueService/latest/SQSDeveloperGuide/sqs-message-timers.html) (default `None`). This parameter should be `None` for a FIFO queue.
-- `messageDeduplicationId`: see the [related page on AWS docs](https://docs.aws.amazon.com/AWSSimpleQueueService/latest/SQSDeveloperGuide/using-messagededuplicationid-property.html)
-- `messageGroupId`: see the [related page on AWS docs](https://docs.aws.amazon.com/AWSSimpleQueueService/latest/SQSDeveloperGuide/using-messagegroupid-property.html)
-- `messageAttributes`: see the [related page on AWS docs](https://docs.aws.amazon.com/AWSSimpleQueueService/latest/SQSDeveloperGuide/sqs-message-attributes.html)
+- `client: SqsAsyncClient` - an instance of [SqsAsyncClient](https://sdk.amazonaws.com/java/api/latest/software/amazon/awssdk/services/sqs/SqsAsyncClient.html)
+- `queueUrl: String` - an SQS queue URL
+- `serializer: Serializer[T]` - a instance of [zio.sqs.serialization.Serializer](src/main/scala/zio/sqs/serialization/Serializer.scala) that can be used to convert an object of type `T` to a string.
+  ```scala
+    trait Serializer[T] {
+      def apply(t: T): String
+    }
+  ```
+  If the published message is already a string, `Serializer.serializeString` can be used.
+- `settings: ProducerSettings` - a set of options deifed in [ProducerSettings](src/main/scala/zio/sqs/producer/ProducerSettings.scala) and used to configure the queue
+  - `batchSize: Int` - The size of the batch to use, [1-10] (default: 10).
+  - `duration: Duration` - Time to wait for the batch to be full (have the specified batchSize) (default: 500 milliseconds).
+  - `parallelism: Int` - The number of concurrent requests to make to SQS (default: 16).
+  - `retryDelay: Duration` - If an event failed to be submit to SQS, retry it after the specified duration (default: 250 milliseconds).
+     The errors returned from SQS could either recoverable or not. An example of recoverable error -- when the server returned the code: `ServiceUnavailable`
+  - `retryMaxCount: Int` - The number of retried to make for the given event (default: 10)
 
+#### Producer
+
+[Producer](src/main/scala/zio/sqs/producer/Producer.scala) contains two sets of methods: with `E` suffix, e.g: `produceE`, `produceBatchE`, `sendStreamE` and the ones the suffix: `produce`, `produceBatch`, `sendStream` and `sendSink`.
+Methods with the suffix `E` return `ErrorOrEvent[T]` that is defied as `Either[ProducerError[T], ProducerEvent[T]]`, These methods do not fail the returned *Task* or *Stream* if SQS server returns an error for any of the published event. 
+Methods without `E` suffix fail the resulting *Task* or *Stream* if SQS server returns an error.
+
+`Producer` contains the following methods for event publishing:
+- `def produceE(e: ProducerEvent[T]): Task[ErrorOrEvent[T]]` - Publishes a single event and returns a Task that contains either the `ProducerError` or the `ProducerEvent` that was published.
+  Doesn't fail the `Task` if the server returns an error for the provided event.
+- `def produce(e: ProducerEvent[T]): Task[ProducerEvent[T]]` - Publishes a single event and fails the task.
+  Fails the `Task` if the server returns an error.
+- `def produceBatchE(es: Iterable[ProducerEvent[T]]): Task[List[ErrorOrEvent[T]]]` - Publishes a batch of events. Completes when all of the listed events were published to the server or returned an error.
+  Doesn't fail the `Task` if the server returns an error for any of the provided events.
+- `def produceBatch(es: Iterable[ProducerEvent[T]]): Task[List[ProducerEvent[T]]]` - Publishes a batch of events.
+  Fails the `Task` if the server returns an error for any of the provided events.
+- `def sendStreamE: Stream[Throwable, ProducerEvent[T]] => ZStream[Clock, Throwable, ErrorOrEvent[T]]` - Stream that takes the events and produces a stream with the results.
+  Doesn't fail if the server returns an error for any of the published events.
+- `def sendStream: Stream[Throwable, ProducerEvent[T]] => ZStream[Clock, Throwable, ProducerEvent[T]]` - Stream that takes the events and produces a stream with published events.
+  Fails if the server returns an error for any of the published events.
+- `def sendSink: ZSink[Any, Throwable, Nothing, Iterable[ProducerEvent[T]], Unit]` - Sink that can be used to publish events.
+  Fails if the server returns an error for any of the published events.
+
+#### ProducerEvent
+
+[ProducerEvent[T]](src/main/scala/zio/sqs/producer/ProducerEvent.scala) is an event that is published to SQS and contains the following parameters that could be configured:
+- `data: T` - Object to publish to SQS. A serializer for this type should be provided when a `Producer` is instantiated.
+- `attributes: Map[String, MessageAttributeValue]` - A map of [attributes](https://docs.aws.amazon.com/AWSSimpleQueueService/latest/SQSDeveloperGuide/sqs-message-attributes.html) to set.
+- `groupId: Option[String]` - Assigns a specific [message group](https://docs.aws.amazon.com/AWSSimpleQueueService/latest/SQSDeveloperGuide/using-messagegroupid-property.html) to the message.
+- `deduplicationId: Option[String]` - Token used for [deduplication](https://docs.aws.amazon.com/AWSSimpleQueueService/latest/SQSDeveloperGuide/using-messagededuplicationid-property.html) of sent messages.
+
+If a plain string should be published without any additional attributes a `ProducerEvent` can be created directly:
 ```scala
-import zio.sqs.SqsPublisher
-
-SqsPublisher.send(client, queueUrl, msg)
+val str: String = "message to publish"
+val event: ProducerEvent = ProducerEvent(str)
 ```
 
-#### Publish with streaming
+#### ProducerError
 
-To publish a collection of messages, `stringStream` or `eventStream` can be used.
+[ProducerError[T]](src/main/scala/zio/sqs/producer/ProducerError.scala) represents an [error details]((https://docs.aws.amazon.com/AWSSimpleQueueService/latest/APIReference/API_BatchResultErrorEntry.html)) that were returned from the server.
+- `senderFault: Boolean` - Specifies whether the error happened due to the caller of the batch API action.
+- `code: String` - An error code representing why the action failed on this entry.
+- `message: Option[String]` - A message explaining why the action failed on this entry.
+- `event: ProducerEvent[T]` - An event that triggered this error on the server.
 
-`stringStream` allows to publish a one or more of strings. When publishing plain strings, no `attributes`, `groupId` or `deduplicationId` is assigned to published messages.
-
-```scala
-def stringStream(
-  client: SqsAsyncClient,
-  queueUrl: String,
-  settings: SqsPublisherStreamSettings = SqsPublisherStreamSettings()
-)(
-  ms: Stream[Throwable, String]
-): ZStream[Clock, Throwable, ErrorOrEvent]
-```
-
-If one need to provide a custom `attributes`, `groupId` or `deduplicationId`, an `eventStream`-method can be used:
+#### Publish Example
 
 ```scala
-def eventStream(
-  client: SqsAsyncClient,
-  queueUrl: String,
-  settings: SqsPublisherStreamSettings = SqsPublisherStreamSettings()
-)(
-  ms: Stream[Throwable, Event]
-): ZStream[Clock, Throwable, ErrorOrEvent]
-```
-
-`eventStream` uses the `Event`-trait to publish messages. `Event` has the following structure:
-
-```scala
-trait Event {
-  def body: String
-  def attributes: Map[String, MessageAttributeValue]
-  def groupId: Option[String]
-  def deduplicationId: Option[String]
-}
-```
-
-Here:
-
-- `body` - a message to publish to SQS.
-- `attributes` - a map of [attributes](https://docs.aws.amazon.com/AWSSimpleQueueService/latest/SQSDeveloperGuide/sqs-message-attributes.html) to set.
-- `groupId` - assigns a specific [message group](https://docs.aws.amazon.com/AWSSimpleQueueService/latest/SQSDeveloperGuide/using-messagegroupid-property.html) to the message.
-- `deduplicationId` - token used for [deduplication](https://docs.aws.amazon.com/AWSSimpleQueueService/latest/SQSDeveloperGuide/using-messagededuplicationid-property.html) of sent messages.
-
-When `stringStream` or `eventStream` are used, they map a stream of strings(events) to the stream of results, `ErrorOrEvent`.
-`ErrorOrEvent` is defined as: `Either[(BatchResultErrorEntry, Event), Event]`, which could be one of:
-
-- `(BatchResultErrorEntry, Event)` - a pair, represending an error result from SQS and an original Event.
-  `BatchResultErrorEntry` - is a detailed description of the [result](https://docs.aws.amazon.com/AWSSimpleQueueService/latest/APIReference/API_BatchResultErrorEntry.html).
-- `Event` - the original event. If strings were streamed, `Event#body` will contain each of them.
-
-`SqsPublisherStreamSettings` a collection of settings to tune the publishing parameters:
-
-- `batchSize: Int` The size of the batch to use, [1-10] (default: 10).
-- `duration: Duration` - Time to wait for the batch to be full (default: 1 second).
-- `parallelism: Int` - the number of concurrent requests to make to SQS (default: 16).
-
-**Example:**
-
-```scala
-val sendStringStream = SqsPublisher.stringStream(client, queueUrl, settings)
-
-Stream("a", "b", "c")
-  .via(sendStringStream)
-  .mapM(ZIO.fromEither)
-  .run(Sink.drain)
-  .foldM(
-    e => ZIO.effectTotal(logger.error("Application failed", e)) *> ZIO.succeed(1),
-    _ => ZIO.succeed(0)
-  )
+    val events = List("message1", "message2").map(ProducerEvent(_))
+    val queueName = "TestQueue"
+    for {
+      client <- Task {
+                 SqsAsyncClient
+                   .builder()
+                   .region(Region.of("ap-northeast-2"))
+                   .credentialsProvider(
+                     StaticCredentialsProvider.create(AwsBasicCredentials.create("key", "key"))
+                   )
+                   .build()
+               }
+      queueUrl    <- Utils.getQueueUrl(client, queueName)
+      producer    <- Task.succeed(Producer.make(client, queueUrl, Serializer.serializeString))
+      errOrResult <- producer.use { p => p.sendStream(Stream(events: _*)).runDrain.either }
+    } yield errOrResult
 ```
 
 ### Consume messages

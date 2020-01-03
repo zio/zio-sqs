@@ -1,8 +1,8 @@
-package zio.sqs
+package zio.sqs.producer
 
-import zio.duration.{ Duration, _ }
+import zio.duration._
 
-final case class SqsPublisherStreamSettings(
+final case class ProducerSettings(
   batchSize: Int = 10,
   duration: Duration = 500.millisecond,
   parallelism: Int = 16,

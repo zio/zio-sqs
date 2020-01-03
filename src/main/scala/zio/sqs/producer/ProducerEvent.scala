@@ -1,17 +1,17 @@
-package zio.sqs
+package zio.sqs.producer
 
 import software.amazon.awssdk.services.sqs.model.MessageAttributeValue
 
-final case class SqsPublishEvent[T](
+final case class ProducerEvent[T](
   data: T,
   attributes: Map[String, MessageAttributeValue],
   groupId: Option[String],
   deduplicationId: Option[String]
 )
 
-object SqsPublishEvent {
+object ProducerEvent {
 
-  def apply(body: String): SqsPublishEvent[String] = SqsPublishEvent(
+  def apply(body: String): ProducerEvent[String] = ProducerEvent(
     data = body,
     attributes = Map.empty[String, MessageAttributeValue],
     groupId = None,

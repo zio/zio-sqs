@@ -1,22 +1,22 @@
-package zio.sqs
+package zio.sqs.producer
 
 import software.amazon.awssdk.services.sqs.model.BatchResultErrorEntry
 
-final case class SqsPublishEventError[T](
+final case class ProducerError[T](
   senderFault: Boolean,
   code: String,
   message: Option[String],
-  event: SqsPublishEvent[T]
+  event: ProducerEvent[T]
 ) extends RuntimeException(s"senderFault: ${senderFault}, code: $code, message: ${message.getOrElse("")}")
 
-object SqsPublishEventError {
+object ProducerError {
 
   private val RecoverableCodes = Set(
     "ServiceUnavailable",
     "ThrottlingException"
   )
 
-  def apply[T](entry: BatchResultErrorEntry, event: SqsPublishEvent[T]): SqsPublishEventError[T] = SqsPublishEventError(
+  def apply[T](entry: BatchResultErrorEntry, event: ProducerEvent[T]): ProducerError[T] = ProducerError(
     senderFault = entry.senderFault(),
     code = entry.code(),
     message = Option(entry.message()),

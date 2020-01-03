@@ -1,20 +1,20 @@
-package zio.sqs
+package zio.sqs.producer
 
 import software.amazon.awssdk.services.sqs.model.MessageAttributeValue
-import zio.test.Assertion._
-import zio.test._
+import zio.test.Assertion.equalTo
+import zio.test.{DefaultRunnableSpec, ExecutionStrategy, TestAspect, assert, suite, test}
 
-object SqsPublishEventSpec
+object ProducerEventSpec
     extends DefaultRunnableSpec(
-      suite("SqsPublishEvent")(
-        test("SqsPublishEvent can be created") {
+      suite("ProducerEvent")(
+        test("it can be created") {
           val attr = MessageAttributeValue
             .builder()
             .dataType("String")
             .stringValue("Jane")
             .build()
 
-          val e = SqsPublishEvent(
+          val e = ProducerEvent(
             data = "1",
             attributes = Map("Name" -> attr),
             groupId = Some("2"),
@@ -26,8 +26,8 @@ object SqsPublishEventSpec
           assert(e.groupId, equalTo(Some("2"))) &&
           assert(e.deduplicationId, equalTo(Some("3")))
         },
-        test("SqsPublishEvent can be created from a string") {
-          val e = SqsPublishEvent(
+        test("it can be created from a string") {
+          val e = ProducerEvent(
             body = "1"
           )
 

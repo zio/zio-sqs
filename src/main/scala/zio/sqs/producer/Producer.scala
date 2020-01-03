@@ -1,25 +1,48 @@
-package zio.sqs
+package zio.sqs.producer
 
 import java.util.function.BiFunction
 
 import software.amazon.awssdk.services.sqs.SqsAsyncClient
-import software.amazon.awssdk.services.sqs.model._
-import zio._
+import software.amazon.awssdk.services.sqs.model.{
+  BatchResultErrorEntry,
+  SendMessageBatchRequest,
+  SendMessageBatchRequestEntry,
+  SendMessageBatchResponse,
+  SendMessageBatchResultEntry
+}
 import zio.clock.Clock
 import zio.duration.Duration
 import zio.sqs.serialization.Serializer
 import zio.stream.{ Sink, Stream, ZSink, ZStream }
+import zio.{ Promise, Queue, RIO, Schedule, Task, ZIO, ZManaged }
 
 import scala.jdk.CollectionConverters._
 
-object SqsPublisherStream {
+trait Producer[T] {
+
+  def produceE(e: ProducerEvent[T]): Task[ErrorOrEvent[T]]
+
+  def produce(e: ProducerEvent[T]): Task[ProducerEvent[T]]
+
+  def produceBatchE(es: Iterable[ProducerEvent[T]]): Task[List[ErrorOrEvent[T]]]
+
+  def produceBatch(es: Iterable[ProducerEvent[T]]): Task[List[ProducerEvent[T]]]
+
+  def sendStreamE: Stream[Throwable, ProducerEvent[T]] => ZStream[Clock, Throwable, ErrorOrEvent[T]]
+
+  def sendStream: Stream[Throwable, ProducerEvent[T]] => ZStream[Clock, Throwable, ProducerEvent[T]]
+
+  def sendSink: ZSink[Any, Throwable, Nothing, Iterable[ProducerEvent[T]], Unit]
+}
+
+object Producer {
 
   def producer[R, T](
     client: SqsAsyncClient,
     queueUrl: String,
     serializer: Serializer[T],
-    settings: SqsPublisherStreamSettings = SqsPublisherStreamSettings()
-  ): ZManaged[R with Clock, Throwable, SqsProducer[T]] = {
+    settings: ProducerSettings = ProducerSettings()
+  ): ZManaged[R with Clock, Throwable, Producer[T]] = {
     val eventQueueSize = nextPower2(settings.batchSize * settings.parallelism)
     for {
       eventQueue <- Queue.bounded[SqsRequestEntry[T]](eventQueueSize).toManaged(_.shutdown)
@@ -36,37 +59,37 @@ object SqsPublisherStream {
         .map(reqBuilder)
         .mapMPar(settings.parallelism)(reqRunner) // TODO: replace all `mapMPar` in this file with `mapMParUnordered` when zio/zio#2547 is fixed
       _ <- stream.runDrain.toManaged_.fork
-    } yield new SqsProducer[T] {
+    } yield new Producer[T] {
 
-      override def produceE(e: SqsPublishEvent[T]): Task[SqsPublishErrorOrResult[T]] =
+      override def produceE(e: ProducerEvent[T]): Task[ErrorOrEvent[T]] =
         for {
-          done     <- Promise.make[Throwable, SqsPublishErrorOrResult[T]]
+          done     <- Promise.make[Throwable, ErrorOrEvent[T]]
           _        <- eventQueue.offer(SqsRequestEntry[T](e, done, 0))
           response <- done.await
         } yield response
 
-      override def produce(e: SqsPublishEvent[T]): Task[SqsPublishEvent[T]] =
+      override def produce(e: ProducerEvent[T]): Task[ProducerEvent[T]] =
         produceE(e).flatMap(e => ZIO.fromEither(e))
 
-      override def produceBatchE(es: Iterable[SqsPublishEvent[T]]): Task[List[SqsPublishErrorOrResult[T]]] =
+      override def produceBatchE(es: Iterable[ProducerEvent[T]]): Task[List[ErrorOrEvent[T]]] =
         ZIO
           .traverse(es) { e =>
             for {
-              done <- Promise.make[Throwable, SqsPublishErrorOrResult[T]]
+              done <- Promise.make[Throwable, ErrorOrEvent[T]]
             } yield SqsRequestEntry(e, done, 0)
           }
           .flatMap(es => eventQueue.offerAll(es) *> ZIO.collectAllPar(es.map(_.done.await)))
 
-      override def produceBatch(es: Iterable[SqsPublishEvent[T]]): Task[List[SqsPublishEvent[T]]] =
+      override def produceBatch(es: Iterable[ProducerEvent[T]]): Task[List[ProducerEvent[T]]] =
         produceBatchE(es).flatMap(rs => ZIO.traverse(rs)(r => ZIO.fromEither(r)))
 
-      override def sendStreamE: Stream[Throwable, SqsPublishEvent[T]] => ZStream[Any, Throwable, SqsPublishErrorOrResult[T]] =
+      override def sendStreamE: Stream[Throwable, ProducerEvent[T]] => ZStream[Any, Throwable, ErrorOrEvent[T]] =
         es => es.mapMPar(settings.batchSize)(produceE)
 
-      override def sendStream: Stream[Throwable, SqsPublishEvent[T]] => ZStream[Any, Throwable, SqsPublishEvent[T]] =
+      override def sendStream: Stream[Throwable, ProducerEvent[T]] => ZStream[Any, Throwable, ProducerEvent[T]] =
         es => es.mapMPar(settings.batchSize)(produce)
 
-      override def sendSink: ZSink[Any, Throwable, Nothing, Iterable[SqsPublishEvent[T]], Unit] =
+      override def sendSink: ZSink[Any, Throwable, Nothing, Iterable[ProducerEvent[T]], Unit] =
         ZSink.drain.contramapM(es => produceBatch(es))
     }
   }
@@ -112,8 +135,8 @@ object SqsPublisherStream {
 
                 val ret = for {
                   _ <- failedQueue.offerAll(retryable.map(it => it.copy(retryCount = it.retryCount + 1))).delay(retryDelay).fork
-                  _ <- ZIO.traverse(successful)(entry => entry.done.succeed(Right(entry.event): SqsPublishErrorOrResult[T]))
-                  _ <- ZIO.traverse(errors)(entry => entry.done.succeed(Left(entry.error): SqsPublishErrorOrResult[T]))
+                  _ <- ZIO.traverse(successful)(entry => entry.done.succeed(Right(entry.event): ErrorOrEvent[T]))
+                  _ <- ZIO.traverse(errors)(entry => entry.done.succeed(Left(entry.error): ErrorOrEvent[T]))
                 } yield ()
 
                 cb(ret)
@@ -129,7 +152,7 @@ object SqsPublisherStream {
     val successful = res.successful().asScala
     val failed     = res.failed().asScala
 
-    val (recoverable, unrecoverable) = failed.partition(it => SqsPublishEventError.isRecoverable(it.code()))
+    val (recoverable, unrecoverable) = failed.partition(it => ProducerError.isRecoverable(it.code()))
     val (retryable, unretryable)     = recoverable.partition(it => m(it.id()).retryCount < retryMaxCount)
 
     (successful, retryable, unrecoverable ++ unretryable)
@@ -142,7 +165,7 @@ object SqsPublisherStream {
     val retryableEntries  = retryable.map(res => m(res.id()))
     val errorEntries = errors.map { err =>
       val entry = m(err.id())
-      SqsResponseErrorEntry(entry.done, SqsPublishEventError(err, entry.event))
+      SqsResponseErrorEntry(entry.done, ProducerError(err, entry.event))
     }
 
     (successfulEntries, retryableEntries, errorEntries)
@@ -161,14 +184,14 @@ object SqsPublisherStream {
   }
 
   private[sqs] final case class SqsRequestEntry[T](
-    event: SqsPublishEvent[T],
-    done: Promise[Throwable, SqsPublishErrorOrResult[T]],
-    retryCount: Int
+                                                    event: ProducerEvent[T],
+                                                    done: Promise[Throwable, ErrorOrEvent[T]],
+                                                    retryCount: Int
   )
 
   private[sqs] final case class SqsResponseErrorEntry[T](
-    done: Promise[Throwable, SqsPublishErrorOrResult[T]],
-    error: SqsPublishEventError[T]
+                                                          done: Promise[Throwable, ErrorOrEvent[T]],
+                                                          error: ProducerError[T]
   )
 
   private[sqs] final case class SqsRequest[T](

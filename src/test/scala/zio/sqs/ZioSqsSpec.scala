@@ -2,12 +2,17 @@ package zio.sqs
 
 import software.amazon.awssdk.services.sqs.model.Message
 import zio._
+import zio.clock.Clock
+import zio.duration._
 import zio.random.Random
 import zio.sqs.ZioSqsMockServer._
 import zio.sqs.ZioSqsSpecUtil._
+import zio.sqs.producer.{ Producer, ProducerEvent }
+import zio.sqs.serialization.Serializer
 import zio.stream.Sink
 import zio.test.Assertion._
 import zio.test._
+import zio.test.environment.{ Live, TestClock }
 
 object ZioSqsSpec
     extends DefaultRunnableSpec(
@@ -71,14 +76,21 @@ object ZioSqsSpecUtil {
 
   val gen: Gen[Random with Sized, List[String]] = Util.listOfStringsN(10)
 
-  def sendAndGet(messages: Seq[String], settings: SqsStreamSettings): ZIO[Any, Throwable, List[Message]] =
+  def withFastClock: ZIO[TestClock with Live[Clock], Nothing, Int] =
+    Live.withLive(TestClock.adjust(1.seconds))(_.repeat(Schedule.spaced(10.millis)))
+
+  def sendAndGet(messages: Seq[String], settings: SqsStreamSettings): ZIO[TestClock with Live[Clock], Throwable, List[Message]] =
     for {
+      _      <- withFastClock.fork
       client <- clientResource
       messagesFromQueue <- client.use { c =>
                             for {
                               _        <- Utils.createQueue(c, queueName)
                               queueUrl <- Utils.getQueueUrl(c, queueName)
-                              _        <- ZIO.foreach(messages)(SqsPublisher.send(c, queueUrl, _))
+                              producer = Producer.make(c, queueUrl, Serializer.serializeString)
+                              _ <- producer.use { p =>
+                                    ZIO.foreach(messages)(it => p.produce(ProducerEvent(it)))
+                                  }
                               messagesFromQueue <- SqsStream(
                                                     c,
                                                     queueUrl,
@@ -86,7 +98,6 @@ object ZioSqsSpecUtil {
                                                   ).runCollect
                             } yield { messagesFromQueue }
                           }
-
     } yield {
       messagesFromQueue
     }

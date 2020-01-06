@@ -108,7 +108,7 @@ val event: ProducerEvent = ProducerEvent(str)
                    .build()
                }
       queueUrl    <- Utils.getQueueUrl(client, queueName)
-      producer    <- Task.succeed(Producer.make(client, queueUrl, Serializer.serializeString))
+      producer    = Producer.make(client, queueUrl, Serializer.serializeString)
       errOrResult <- producer.use { p => p.sendStream(Stream(events: _*)).runDrain.either }
     } yield errOrResult
 ```

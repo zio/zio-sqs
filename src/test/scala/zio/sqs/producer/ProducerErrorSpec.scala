@@ -1,7 +1,7 @@
 package zio.sqs.producer
 
 import software.amazon.awssdk.services.sqs.model.BatchResultErrorEntry
-import zio.test.Assertion.equalTo
+import zio.test.Assertion._
 import zio.test._
 
 object ProducerErrorSpec
@@ -16,7 +16,7 @@ object ProducerErrorSpec
 
           assert(e.code, equalTo("code2")) &&
           assert(e.message, equalTo(Some("message3"))) &&
-          assert(e.senderFault, equalTo(true)) &&
+          assert(e.senderFault, isTrue) &&
           assert(e.event, equalTo(event))
         },
         test("it can be created from BatchResultErrorEntry without message") {
@@ -26,8 +26,8 @@ object ProducerErrorSpec
           val e = ProducerError(errEntry, event)
 
           assert(e.code, equalTo("code2")) &&
-          assert(e.message, equalTo(None)) &&
-          assert(e.senderFault, equalTo(true)) &&
+          assert(e.message, isNone) &&
+          assert(e.senderFault, isTrue) &&
           assert(e.event, equalTo(event))
         }
       ),

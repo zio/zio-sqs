@@ -4,29 +4,27 @@ import java.util.function.BiFunction
 
 import software.amazon.awssdk.services.sqs.SqsAsyncClient
 import software.amazon.awssdk.services.sqs.model._
+import zio._
 import zio.clock.Clock
 import zio.duration.Duration
 import zio.sqs.serialization.Serializer
 import zio.stream.{ Sink, Stream, ZSink, ZStream }
-import zio._
 
 import scala.jdk.CollectionConverters._
 
 trait Producer[T] {
 
-  def produceE(e: ProducerEvent[T]): Task[ErrorOrEvent[T]]
-
   def produce(e: ProducerEvent[T]): Task[ProducerEvent[T]]
 
-  def produceBatchE(es: Iterable[ProducerEvent[T]]): Task[List[ErrorOrEvent[T]]]
-
   def produceBatch(es: Iterable[ProducerEvent[T]]): Task[List[ProducerEvent[T]]]
-
-  def sendStreamE: Stream[Throwable, ProducerEvent[T]] => ZStream[Clock, Throwable, ErrorOrEvent[T]]
 
   def sendStream: Stream[Throwable, ProducerEvent[T]] => ZStream[Clock, Throwable, ProducerEvent[T]]
 
   def sendSink: ZSink[Any, Throwable, Nothing, Iterable[ProducerEvent[T]], Unit]
+
+  def produceBatchE(es: Iterable[ProducerEvent[T]]): Task[List[ErrorOrEvent[T]]]
+
+  def sendStreamE: Stream[Throwable, ProducerEvent[T]] => ZStream[Clock, Throwable, ErrorOrEvent[T]]
 }
 
 object Producer {
@@ -53,39 +51,40 @@ object Producer {
         .map(reqBuilder)
         .mapMPar(settings.parallelism)(reqRunner) // TODO: replace all `mapMPar` in this file with `mapMParUnordered` when zio/zio#2547 is fixed
       _ <- stream.runDrain.toManaged_.fork
-    } yield new Producer[T] {
+    } yield new DefaultProducer[T](eventQueue, settings)
+  }
 
-      override def produceE(e: ProducerEvent[T]): Task[ErrorOrEvent[T]] =
-        for {
-          done     <- Promise.make[Throwable, ErrorOrEvent[T]]
-          _        <- eventQueue.offer(SqsRequestEntry[T](e, done, 0))
-          response <- done.await
-        } yield response
+  private[sqs] class DefaultProducer[T](eventQueue: Queue[SqsRequestEntry[T]], settings: ProducerSettings) extends Producer[T] {
+    override def produce(e: ProducerEvent[T]): Task[ProducerEvent[T]] =
+      produceE(e).flatMap(e => ZIO.fromEither(e))
 
-      override def produce(e: ProducerEvent[T]): Task[ProducerEvent[T]] =
-        produceE(e).flatMap(e => ZIO.fromEither(e))
+    override def produceBatchE(es: Iterable[ProducerEvent[T]]): Task[List[ErrorOrEvent[T]]] =
+      ZIO
+        .traverse(es) { e =>
+          for {
+            done <- Promise.make[Throwable, ErrorOrEvent[T]]
+          } yield SqsRequestEntry(e, done, 0)
+        }
+        .flatMap(es => eventQueue.offerAll(es) *> ZIO.collectAllPar(es.map(_.done.await)))
 
-      override def produceBatchE(es: Iterable[ProducerEvent[T]]): Task[List[ErrorOrEvent[T]]] =
-        ZIO
-          .traverse(es) { e =>
-            for {
-              done <- Promise.make[Throwable, ErrorOrEvent[T]]
-            } yield SqsRequestEntry(e, done, 0)
-          }
-          .flatMap(es => eventQueue.offerAll(es) *> ZIO.collectAllPar(es.map(_.done.await)))
+    override def produceBatch(es: Iterable[ProducerEvent[T]]): Task[List[ProducerEvent[T]]] =
+      produceBatchE(es).flatMap(rs => ZIO.traverse(rs)(r => ZIO.fromEither(r)))
 
-      override def produceBatch(es: Iterable[ProducerEvent[T]]): Task[List[ProducerEvent[T]]] =
-        produceBatchE(es).flatMap(rs => ZIO.traverse(rs)(r => ZIO.fromEither(r)))
+    override def sendStreamE: Stream[Throwable, ProducerEvent[T]] => ZStream[Any, Throwable, ErrorOrEvent[T]] =
+      es => es.mapMPar(settings.batchSize)(produceE)
 
-      override def sendStreamE: Stream[Throwable, ProducerEvent[T]] => ZStream[Any, Throwable, ErrorOrEvent[T]] =
-        es => es.mapMPar(settings.batchSize)(produceE)
+    override def sendStream: Stream[Throwable, ProducerEvent[T]] => ZStream[Any, Throwable, ProducerEvent[T]] =
+      es => es.mapMPar(settings.batchSize)(produce)
 
-      override def sendStream: Stream[Throwable, ProducerEvent[T]] => ZStream[Any, Throwable, ProducerEvent[T]] =
-        es => es.mapMPar(settings.batchSize)(produce)
+    override def sendSink: ZSink[Any, Throwable, Nothing, Iterable[ProducerEvent[T]], Unit] =
+      ZSink.drain.contramapM(es => produceBatch(es))
 
-      override def sendSink: ZSink[Any, Throwable, Nothing, Iterable[ProducerEvent[T]], Unit] =
-        ZSink.drain.contramapM(es => produceBatch(es))
-    }
+    private[sqs] def produceE(e: ProducerEvent[T]): Task[ErrorOrEvent[T]] =
+      for {
+        done     <- Promise.make[Throwable, ErrorOrEvent[T]]
+        _        <- eventQueue.offer(SqsRequestEntry[T](e, done, 0))
+        response <- done.await
+      } yield response
   }
 
   private[sqs] def buildSendMessageBatchRequest[T](queueUrl: String, serializer: Serializer[T])(entries: List[SqsRequestEntry[T]]): SqsRequest[T] = {
@@ -122,10 +121,10 @@ object Producer {
               case null =>
                 val m = req.entries.zipWithIndex.map(it => (it._2.toString, it._1)).toMap
 
-                val responseParitioner = partitionResponse(m, retryMaxCount) _
-                val responseMapper     = mapResponse(m) _
+                val responsePartitioner = partitionResponse(m, retryMaxCount) _
+                val responseMapper      = mapResponse(m) _
 
-                val (successful, retryable, errors) = responseMapper.tupled(responseParitioner(res))
+                val (successful, retryable, errors) = responseMapper.tupled(responsePartitioner(res))
 
                 val ret = for {
                   _ <- failedQueue.offerAll(retryable.map(it => it.copy(retryCount = it.retryCount + 1))).delay(retryDelay).fork

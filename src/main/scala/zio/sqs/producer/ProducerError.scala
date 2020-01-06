@@ -7,7 +7,7 @@ final case class ProducerError[T](
   code: String,
   message: Option[String],
   event: ProducerEvent[T]
-) extends RuntimeException(s"senderFault: ${senderFault}, code: $code, message: ${message.getOrElse("")}")
+) extends RuntimeException(s"senderFault: $senderFault, code: $code, message: ${message.getOrElse("")}")
 
 object ProducerError {
 

@@ -9,7 +9,7 @@ import software.amazon.awssdk.services.sqs.model._
 import zio.clock.Clock
 import zio.duration._
 import zio.sqs.ZioSqsMockServer._
-import zio.sqs.producer.Producer.{ SqsRequest, SqsRequestEntry, SqsResponseErrorEntry }
+import zio.sqs.producer.Producer.{ DefaultProducer, SqsRequest, SqsRequestEntry, SqsResponseErrorEntry }
 import zio.sqs.producer.SqsPublishStreamSpecUtil._
 import zio.sqs.serialization.Serializer
 import zio.sqs.{ Util, Utils }
@@ -52,7 +52,7 @@ object ProducerSpec
             isDone       <- requestEntry.done.isDone
           } yield {
             assert(requestEntry.event, equalTo(pe)) &&
-            assert(isDone, equalTo(false)) &&
+            assert(isDone, isFalse) &&
             assert(requestEntry.retryCount, equalTo(10))
           }
         },
@@ -104,7 +104,7 @@ object ProducerSpec
             isDone   <- errEntry.done.isDone
           } yield {
             assert(errEntry.error, equalTo(eventError)) &&
-            assert(isDone, equalTo(false))
+            assert(isDone, isFalse)
           }
         },
         testM("SendMessageBatchResponse can be partitioned") {
@@ -206,12 +206,12 @@ object ProducerSpec
             val innerReqEntries = req.inner.entries().asScala
 
             assert(req.entries, equalTo(reqEntries)) &&
-            assert(innerReq.hasEntries, equalTo(true)) &&
+            assert(innerReq.hasEntries, isTrue) &&
             assert(innerReqEntries.size, equalTo(2)) &&
             assert(innerReqEntries(0).id(), equalTo("0")) &&
             assert(innerReqEntries(0).messageBody(), equalTo("A")) &&
             assert(innerReqEntries(0).messageAttributes().size(), equalTo(1)) &&
-            assert(innerReqEntries(0).messageAttributes().asScala.contains("Name"), equalTo(true)) &&
+            assert(innerReqEntries(0).messageAttributes().asScala.contains("Name"), isTrue) &&
             assert(innerReqEntries(0).messageAttributes().asScala("Name"), equalTo(attr)) &&
             assert(Option(innerReqEntries(0).messageGroupId()), equalTo(Some("g1"))) &&
             assert(Option(innerReqEntries(0).messageDeduplicationId()), equalTo(Some("d1"))) &&
@@ -260,7 +260,7 @@ object ProducerSpec
                     }
             isAllRight <- dones.map(_.forall(_.isRight))
           } yield {
-            assert(isAllRight, equalTo(true))
+            assert(isAllRight, isTrue)
           }
         },
         testM("events can be published using sendStream and return the results") {
@@ -295,7 +295,7 @@ object ProducerSpec
                       }
           } yield {
             assert(results.size, equalTo(events.size)) &&
-            assert(results.forall(_.isRight), equalTo(true))
+            assert(results.forall(_.isRight), isTrue)
           }
         },
         testM("events can be published using sendStream and fail the task on error") {
@@ -312,7 +312,7 @@ object ProducerSpec
                             p.sendStream(Stream(events: _*)).runDrain.either
                           }
           } yield {
-            assert(errOrResult.isLeft, equalTo(true))
+            assert(errOrResult.isLeft, isTrue)
           }
         },
         testM("events can be published using produce and return the results") {
@@ -336,14 +336,14 @@ object ProducerSpec
                             queueUrl <- Utils.getQueueUrl(c, queueName)
                             producer = Producer.make(c, queueUrl, Serializer.serializeString, settings)
                             results <- producer.use { p =>
-                                        ZIO.traversePar(events)(event => p.produceE(event))
+                                        ZIO.traversePar(events)(event => p.asInstanceOf[DefaultProducer[String]].produceE(event))
                                       }
                           } yield results
                         }
                       }
           } yield {
             assert(results.size, equalTo(events.size)) &&
-            assert(results.forall(_.isRight), equalTo(true))
+            assert(results.forall(_.isRight), isTrue)
           }
         },
         testM("events can be pushed using produce and fail the task on error") {
@@ -360,7 +360,7 @@ object ProducerSpec
                              ZIO.traversePar(events)(event => p.produce(event))
                            }.either
           } yield {
-            assert(errOrResults.isLeft, equalTo(true))
+            assert(errOrResults.isLeft, isTrue)
           }
         },
         testM("events can be published using produceBatch and return the results") {
@@ -391,7 +391,7 @@ object ProducerSpec
                       }
           } yield {
             assert(results.size, equalTo(events.size)) &&
-            assert(results.forall(_.isRight), equalTo(true))
+            assert(results.forall(_.isRight), isTrue)
           }
         },
         testM("events can be published using produceBatch and fail the task on error") {
@@ -408,7 +408,7 @@ object ProducerSpec
                              p.produceBatch(events)
                            }.either
           } yield {
-            assert(errOrResults.isLeft, equalTo(true))
+            assert(errOrResults.isLeft, isTrue)
           }
         },
         testM("events can be published using sendSink") {
@@ -449,7 +449,9 @@ object ProducerSpec
 
           val client = new SqsAsyncClient {
             override def serviceName(): String = "test-sqs-async-client"
-            override def close(): Unit         = ()
+
+            override def close(): Unit = ()
+
             override def sendMessageBatch(sendMessageBatchRequest: SendMessageBatchRequest): CompletableFuture[SendMessageBatchResponse] =
               CompletableFuture.supplyAsync[SendMessageBatchResponse] { () =>
                 throw new RuntimeException("network failure")
@@ -463,7 +465,7 @@ object ProducerSpec
                              Stream.succeed(events).run(p.sendSink)
                            }.either
           } yield {
-            assert(errOrResults.isLeft, equalTo(true))
+            assert(errOrResults.isLeft, isTrue)
           }
         },
         testM("events that published using sendSink and return an unrecoverable error should fail the sink on error") {
@@ -480,7 +482,7 @@ object ProducerSpec
                              Stream.succeed(events).run(p.sendSink)
                            }.either
           } yield {
-            assert(errOrResults.isLeft, equalTo(true))
+            assert(errOrResults.isLeft, isTrue)
           }
         },
         testM("submitted events can succeed and fail if there are unrecoverable errors") {
@@ -491,7 +493,9 @@ object ProducerSpec
 
           val client = new SqsAsyncClient {
             override def serviceName(): String = "test-sqs-async-client"
-            override def close(): Unit         = ()
+
+            override def close(): Unit = ()
+
             override def sendMessageBatch(sendMessageBatchRequest: SendMessageBatchRequest): CompletableFuture[SendMessageBatchResponse] = {
               val batchRequestEntries                                       = sendMessageBatchRequest.entries().asScala
               val (batchRequestEntriesToSucceed, batchRequestEntriesToFail) = batchRequestEntries.partition(_.messageBody() == "A")
@@ -543,7 +547,9 @@ object ProducerSpec
           val invokeCount = new AtomicInteger(0)
           val client = new SqsAsyncClient {
             override def serviceName(): String = "test-sqs-async-client"
-            override def close(): Unit         = ()
+
+            override def close(): Unit = ()
+
             override def sendMessageBatch(sendMessageBatchRequest: SendMessageBatchRequest): CompletableFuture[SendMessageBatchResponse] = {
               invokeCount.incrementAndGet()
 
@@ -593,7 +599,9 @@ object ProducerSpec
           val invokeCount = new AtomicInteger(0)
           val client = new SqsAsyncClient {
             override def serviceName(): String = "test-sqs-async-client"
-            override def close(): Unit         = ()
+
+            override def close(): Unit = ()
+
             override def sendMessageBatch(sendMessageBatchRequest: SendMessageBatchRequest): CompletableFuture[SendMessageBatchResponse] = {
               val batchRequestEntriesToFail = sendMessageBatchRequest.entries().asScala
 
@@ -637,7 +645,9 @@ object ProducerSpec
           val invokeCount = new AtomicInteger(0)
           val client = new SqsAsyncClient {
             override def serviceName(): String = "test-sqs-async-client"
-            override def close(): Unit         = ()
+
+            override def close(): Unit = ()
+
             override def sendMessageBatch(sendMessageBatchRequest: SendMessageBatchRequest): CompletableFuture[SendMessageBatchResponse] = {
               invokeCount.addAndGet(1)
               CompletableFuture.supplyAsync[SendMessageBatchResponse] { () =>
@@ -653,7 +663,7 @@ object ProducerSpec
                              p.produceBatchE(events)
                            }.either
           } yield {
-            assert(errOrResults.isLeft, equalTo(true))
+            assert(errOrResults.isLeft, isTrue)
           }
         }
       ),
@@ -674,7 +684,9 @@ object SqsPublishStreamSpecUtil {
    */
   val failUnrecoverableClient: SqsAsyncClient = new SqsAsyncClient {
     override def serviceName(): String = "test-sqs-async-client"
-    override def close(): Unit         = ()
+
+    override def close(): Unit = ()
+
     override def sendMessageBatch(sendMessageBatchRequest: SendMessageBatchRequest): CompletableFuture[SendMessageBatchResponse] = {
       val batchRequestEntries = sendMessageBatchRequest.entries().asScala
       val errorEntries = batchRequestEntries.map { entry =>

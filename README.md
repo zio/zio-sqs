@@ -50,25 +50,25 @@ where:
 
 #### Producer
 
-[Producer](src/main/scala/zio/sqs/producer/Producer.scala) contains two sets of methods: with `E` suffix, e.g: `produceE`, `produceBatchE`, `sendStreamE` and the ones the suffix: `produce`, `produceBatch`, `sendStream` and `sendSink`.
-Methods with the suffix `E` return `ErrorOrEvent[T]` that is defied as `Either[ProducerError[T], ProducerEvent[T]]`, These methods do not fail the returned *Task* or *Stream* if SQS server returns an error for any of the published event. 
-Methods without `E` suffix fail the resulting *Task* or *Stream* if SQS server returns an error.
+[Producer](src/main/scala/zio/sqs/producer/Producer.scala) contains two set of methods:
+- methods that fail the resulting *Task* or *Stream* if SQS server returns an error for a published event.
+  - `def produce(e: ProducerEvent[T]): Task[ProducerEvent[T]]` - Publishes a single event and fails the task.
+    Fails the `Task` if the server returns an error.
+  - `def produceBatch(es: Iterable[ProducerEvent[T]]): Task[List[ProducerEvent[T]]]` - Publishes a batch of events.
+    Fails the `Task` if the server returns an error for any of the provided events.
+  - `def sendStream: Stream[Throwable, ProducerEvent[T]] => ZStream[Clock, Throwable, ProducerEvent[T]]` - Stream that takes the events and produces a stream with published events.
+    Fails if the server returns an error for any of the published events.
+  - `def sendSink: ZSink[Any, Throwable, Nothing, Iterable[ProducerEvent[T]], Unit]` - Sink that can be used to publish events.
+    Fails if the server returns an error for any of the published events.
 
-`Producer` contains the following methods for event publishing:
-- `def produceE(e: ProducerEvent[T]): Task[ErrorOrEvent[T]]` - Publishes a single event and returns a Task that contains either the `ProducerError` or the `ProducerEvent` that was published.
-  Doesn't fail the `Task` if the server returns an error for the provided event.
-- `def produce(e: ProducerEvent[T]): Task[ProducerEvent[T]]` - Publishes a single event and fails the task.
-  Fails the `Task` if the server returns an error.
-- `def produceBatchE(es: Iterable[ProducerEvent[T]]): Task[List[ErrorOrEvent[T]]]` - Publishes a batch of events. Completes when all of the listed events were published to the server or returned an error.
-  Doesn't fail the `Task` if the server returns an error for any of the provided events.
-- `def produceBatch(es: Iterable[ProducerEvent[T]]): Task[List[ProducerEvent[T]]]` - Publishes a batch of events.
-  Fails the `Task` if the server returns an error for any of the provided events.
-- `def sendStreamE: Stream[Throwable, ProducerEvent[T]] => ZStream[Clock, Throwable, ErrorOrEvent[T]]` - Stream that takes the events and produces a stream with the results.
-  Doesn't fail if the server returns an error for any of the published events.
-- `def sendStream: Stream[Throwable, ProducerEvent[T]] => ZStream[Clock, Throwable, ProducerEvent[T]]` - Stream that takes the events and produces a stream with published events.
-  Fails if the server returns an error for any of the published events.
-- `def sendSink: ZSink[Any, Throwable, Nothing, Iterable[ProducerEvent[T]], Unit]` - Sink that can be used to publish events.
-  Fails if the server returns an error for any of the published events.
+- methods that do not fail the operation but return `ErrorOrEvent[T]` (defied as `Either[ProducerError[T], ProducerEvent[T]]`).
+  - `def sendStreamE: Stream[Throwable, ProducerEvent[T]] => ZStream[Clock, Throwable, ErrorOrEvent[T]]` - Stream that takes the events and produces a stream with the results.
+    Doesn't fail if the server returns an error for any of the published events.
+  - `def produceBatchE(es: Iterable[ProducerEvent[T]]): Task[List[ErrorOrEvent[T]]]` - Publishes a batch of events. Completes when all of the listed events were published to the server or returned an error.
+    Doesn't fail the `Task` if the server returns an error for any of the provided events.
+
+Producer tries to accumulate messages in batches and send them to the server.
+If messages should be sent one by one and batching is not expected, set `ProducerSettings.batchSize` to `1`.
 
 #### ProducerEvent
 
@@ -167,35 +167,40 @@ def getQueueUrl(
 ### Full example
 
 ```scala
-import java.net.URI
 import software.amazon.awssdk.auth.credentials.{ AwsBasicCredentials, StaticCredentialsProvider }
 import software.amazon.awssdk.regions.Region
 import software.amazon.awssdk.services.sqs.SqsAsyncClient
-import zio.{ App, IO, Task, UIO, ZIO }
-import zio.sqs.{ SqsPublisher, SqsStream, SqsStreamSettings, Utils }
+import zio.sqs.producer.{ Producer, ProducerEvent }
+import zio.sqs.serialization.Serializer
+import zio.sqs.{ SqsStream, SqsStreamSettings, Utils }
+import zio.{ App, IO, Task, UIO, ZEnv, ZIO }
 
 object TestApp extends App {
 
-  override def run(args: List[String]): ZIO[Environment, Nothing, Int] =
+  override def run(args: List[String]): ZIO[ZEnv, Nothing, Int] =
     (for {
       client <- Task {
                  SqsAsyncClient
                    .builder()
                    .region(Region.of("ap-northeast-2"))
                    .credentialsProvider(
-                     StaticCredentialsProvider.create(AwsBasicCredentials.create("key", "key"))
+                     StaticCredentialsProvider
+                       .create(AwsBasicCredentials.create("key", "key"))
                    )
                    .build()
                }
       queueName = "TestQueue"
       _         <- Utils.createQueue(client, queueName)
       queueUrl  <- Utils.getQueueUrl(client, queueName)
-      _         <- SqsPublisher.send(client, queueUrl, "hello")
-      _         <- SqsStream(
-                     client,
-                     queueUrl,
-                     SqsStreamSettings(stopWhenQueueEmpty = true, waitTimeSeconds = 3)
-                   ).foreach(msg => UIO(println(msg.body)))
-    } yield 0).foldM(e => UIO(println(e.toString())).as(1), IO.succeed)
+      producer  = Producer.make(client, queueUrl, Serializer.serializeString)
+      _ <- producer.use { p =>
+            p.produce(ProducerEvent("hello"))
+          }
+      _ <- SqsStream(
+            client,
+            queueUrl,
+            SqsStreamSettings(stopWhenQueueEmpty = true, waitTimeSeconds = 3)
+          ).foreach(msg => UIO(println(msg.body)))
+    } yield 0).foldM(e => UIO(println(e.toString)).as(1), IO.succeed)
 }
 ```

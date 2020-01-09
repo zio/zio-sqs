@@ -39,14 +39,14 @@ where:
       def apply(t: T): String
     }
   ```
-  If the published message is already a string, `Serializer.serializeString` can be used.
-- `settings: ProducerSettings` - a set of options deifed in [ProducerSettings](src/main/scala/zio/sqs/producer/ProducerSettings.scala) and used to configure the queue
+  If a published message is already a string, `Serializer.serializeString` can be used.
+- `settings: ProducerSettings` - a set of [settings](src/main/scala/zio/sqs/producer/ProducerSettings.scala) used to configure the producer.
   - `batchSize: Int` - The size of the batch to use, [1-10] (default: 10).
   - `duration: Duration` - Time to wait for the batch to be full (have the specified batchSize) (default: 500 milliseconds).
   - `parallelism: Int` - The number of concurrent requests to make to SQS (default: 16).
-  - `retryDelay: Duration` - If an event failed to be submit to SQS, retry it after the specified duration (default: 250 milliseconds).
+  - `retryDelay: Duration` - Time to wait before retrying event republishing if it failed with a recoverable error (default: 250 milliseconds).
      The errors returned from SQS could either recoverable or not. An example of recoverable error -- when the server returned the code: `ServiceUnavailable`
-  - `retryMaxCount: Int` - The number of retried to make for the given event (default: 10)
+  - `retryMaxCount: Int` - The number of retries to make for a posted event (default: 10).
 
 #### Producer
 

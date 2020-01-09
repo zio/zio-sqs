@@ -16,7 +16,7 @@ import scala.jdk.CollectionConverters._
  * Producer that can be used to publish an event of type T to SQS queue
  * An instance of producer should be instantiated before publishing.
  * {{{
- * // when publishing strings with the provided *client* to the given *queueUrl*
+ * // when publishing strings with the provided `client` to the given `queueUrl`
  * producer = Producer.make(client, queueUrl, Serializer.serializeString)
  * }}}
  * @tparam T type of the event to publish
@@ -199,7 +199,7 @@ object Producer {
   /**
    * Publishes the provided event to SQS.
    * @param client sqs async client to use
-   * @param failedQueue a queue to put events for retry in case of *recoverable* failures.
+   * @param failedQueue a queue to put events for retry in case of ''recoverable'' failures.
    * @param retryDelay delay to wait inserting events to the failedQueue.
    * @param retryMaxCount max allowed number of retries per event.
    * @param req batch-request to send to SQS.
@@ -243,7 +243,7 @@ object Producer {
    * Partitions the response into a collections of: successful, retryable and non-retryable events.
    * @param m map that maps request id to the request entry that was sent to the server.
    * @param retryMaxCount max retry count that can be done of one event.
-   *                      If the recoverable event fails for more than or equal to *retryMaxCount* times, it is considered unrecoverable.
+   *                      If the recoverable event fails for more than or equal to `retryMaxCount` times, it is considered unrecoverable.
    * @param res response returned from SQS that should be processed.
    * @tparam T type of the published event.
    * @return tuple with successful, retryable and non-retryable events.

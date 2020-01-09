@@ -64,7 +64,7 @@ where:
 - methods that do not fail the operation but return `ErrorOrEvent[T]` (defied as `Either[ProducerError[T], ProducerEvent[T]]`).
   - `def sendStreamE: Stream[Throwable, ProducerEvent[T]] => ZStream[Clock, Throwable, ErrorOrEvent[T]]` - Stream that takes the events and produces a stream with the results.
     Doesn't fail if the server returns an error for any of the published events.
-  - `def produceBatchE(es: Iterable[ProducerEvent[T]]): Task[List[ErrorOrEvent[T]]]` - Publishes a batch of events. Completes when all of the listed events were published to the server or returned an error.
+  - `def produceBatchE(es: Iterable[ProducerEvent[T]]): Task[List[ErrorOrEvent[T]]]` - Publishes a batch of events. Completes when all input events were processed (published to the server or failed with an error).
     Doesn't fail the `Task` if the server returns an error for any of the provided events.
 
 Producer tries to accumulate messages in batches and send them to the server.

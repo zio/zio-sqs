@@ -1,7 +1,7 @@
 package zio.sqs.serialization
 
 /**
- * A type class to convert a value of type `A` to a [[String]] value.
+ * A type class to convert a value of type `A` to a `String` value.
  */
 trait Serializer[A] { self =>
 

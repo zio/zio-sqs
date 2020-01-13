@@ -107,7 +107,7 @@ object Producer {
     serializer: Serializer[T],
     settings: ProducerSettings = ProducerSettings()
   ): ZManaged[R with Clock, Throwable, Producer[T]] = {
-    val eventQueueSize = nextPower2(settings.batchSize)
+    val eventQueueSize = nextPower2(settings.batchSize * settings.parallelism)
     for {
       eventQueue <- Queue.bounded[SqsRequestEntry[T]](eventQueueSize).toManaged(_.shutdown)
       failQueue  <- Queue.bounded[SqsRequestEntry[T]](eventQueueSize).toManaged(_.shutdown)
@@ -225,7 +225,7 @@ object Producer {
                 val (successful, retryable, errors) = responseMapper.tupled(responsePartitioner(res))
 
                 val ret = for {
-                  _ <- failedQueue.offerAll(retryable.map(it => it.copy(retryCount = it.retryCount + 1))).delay(retryDelay).fork
+                  _ <- URIO.when(retryable.nonEmpty)(failedQueue.offerAll(retryable.map(it => it.copy(retryCount = it.retryCount + 1))).delay(retryDelay).fork)
                   _ <- ZIO.traverse(successful)(entry => entry.done.succeed(Right(entry.event): ErrorOrEvent[T]))
                   _ <- ZIO.traverse(errors)(entry => entry.done.succeed(Left(entry.error): ErrorOrEvent[T]))
                 } yield ()

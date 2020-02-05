@@ -32,8 +32,8 @@ libraryDependencies ++= Seq(
   "org.scala-lang.modules" %% "scala-collection-compat" % "2.1.3",
   "dev.zio"                %% "zio-test"                % "1.0.0-RC17" % "test",
   "dev.zio"                %% "zio-test-sbt"            % "1.0.0-RC17" % "test",
-  "org.elasticmq"          %% "elasticmq-rest-sqs"      % "0.15.3" % "test",
-  "org.elasticmq"          %% "elasticmq-core"          % "0.15.3" % "test",
+  "org.elasticmq"          %% "elasticmq-rest-sqs"      % "0.15.4" % "test",
+  "org.elasticmq"          %% "elasticmq-core"          % "0.15.4" % "test",
   compilerPlugin("org.typelevel" %% "kind-projector"     % "0.10.3"),
   compilerPlugin("com.olegpy"    %% "better-monadic-for" % "0.3.1")
 )

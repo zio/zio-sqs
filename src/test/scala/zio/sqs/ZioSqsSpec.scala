@@ -23,9 +23,7 @@ object ZioSqsSpec
           for {
             messages <- gen.sample.map(_.value).run(Sink.await[List[String]])
             server   <- serverResource
-            list <- server.use { _ =>
-                     sendAndGet(messages, settings)
-                   }
+            list     <- server.use(_ => sendAndGet(messages, settings))
 
           } yield {
             assert(list.map(_.body()), equalTo(messages))
@@ -88,9 +86,7 @@ object ZioSqsSpecUtil {
                               _        <- Utils.createQueue(c, queueName)
                               queueUrl <- Utils.getQueueUrl(c, queueName)
                               producer = Producer.make(c, queueUrl, Serializer.serializeString)
-                              _ <- producer.use { p =>
-                                    ZIO.foreach(messages)(it => p.produce(ProducerEvent(it)))
-                                  }
+                              _        <- producer.use(p => ZIO.foreach(messages)(it => p.produce(ProducerEvent(it))))
                               messagesFromQueue <- SqsStream(
                                                     c,
                                                     queueUrl,

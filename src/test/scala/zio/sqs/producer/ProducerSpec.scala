@@ -306,11 +306,9 @@ object ProducerSpec
           val client                     = failUnrecoverableClient
 
           for {
-            _        <- withFastClock.fork
-            producer = Producer.make(client, queueUrl, Serializer.serializeString, settings)
-            errOrResult <- producer.use { p =>
-                            p.sendStream(Stream(events: _*)).runDrain.either
-                          }
+            _           <- withFastClock.fork
+            producer    = Producer.make(client, queueUrl, Serializer.serializeString, settings)
+            errOrResult <- producer.use(p => p.sendStream(Stream(events: _*)).runDrain.either)
           } yield {
             assert(errOrResult.isLeft, isTrue)
           }
@@ -335,9 +333,7 @@ object ProducerSpec
                             _        <- Utils.createQueue(c, queueName)
                             queueUrl <- Utils.getQueueUrl(c, queueName)
                             producer = Producer.make(c, queueUrl, Serializer.serializeString, settings)
-                            results <- producer.use { p =>
-                                        ZIO.traversePar(events)(event => p.asInstanceOf[DefaultProducer[String]].produceE(event))
-                                      }
+                            results  <- producer.use(p => ZIO.traversePar(events)(event => p.asInstanceOf[DefaultProducer[String]].produceE(event)))
                           } yield results
                         }
                       }
@@ -354,11 +350,9 @@ object ProducerSpec
           val client                     = failUnrecoverableClient
 
           for {
-            _        <- withFastClock.fork
-            producer = Producer.make(client, queueUrl, Serializer.serializeString, settings)
-            errOrResults <- producer.use { p =>
-                             ZIO.traversePar(events)(event => p.produce(event))
-                           }.either
+            _            <- withFastClock.fork
+            producer     = Producer.make(client, queueUrl, Serializer.serializeString, settings)
+            errOrResults <- producer.use(p => ZIO.traversePar(events)(event => p.produce(event))).either
           } yield {
             assert(errOrResults.isLeft, isTrue)
           }
@@ -383,9 +377,7 @@ object ProducerSpec
                             _        <- Utils.createQueue(c, queueName)
                             queueUrl <- Utils.getQueueUrl(c, queueName)
                             producer <- Task.succeed(Producer.make(c, queueUrl, Serializer.serializeString, settings))
-                            results <- producer.use { p =>
-                                        p.produceBatchE(events)
-                                      }
+                            results  <- producer.use(p => p.produceBatchE(events))
                           } yield results
                         }
                       }
@@ -402,11 +394,9 @@ object ProducerSpec
           val client                     = failUnrecoverableClient
 
           for {
-            _        <- withFastClock.fork
-            producer = Producer.make(client, queueUrl, Serializer.serializeString, settings)
-            errOrResults <- producer.use { p =>
-                             p.produceBatch(events)
-                           }.either
+            _            <- withFastClock.fork
+            producer     = Producer.make(client, queueUrl, Serializer.serializeString, settings)
+            errOrResults <- producer.use(p => p.produceBatch(events)).either
           } yield {
             assert(errOrResults.isLeft, isTrue)
           }
@@ -431,9 +421,7 @@ object ProducerSpec
                             _        <- Utils.createQueue(c, queueName)
                             queueUrl <- Utils.getQueueUrl(c, queueName)
                             producer = Producer.make(c, queueUrl, Serializer.serializeString, settings)
-                            results <- producer.use { p =>
-                                        Stream.succeed(events).run(p.sendSink)
-                                      }
+                            results  <- producer.use(p => Stream.succeed(events).run(p.sendSink))
                           } yield results
                         }
                       }
@@ -453,17 +441,13 @@ object ProducerSpec
             override def close(): Unit = ()
 
             override def sendMessageBatch(sendMessageBatchRequest: SendMessageBatchRequest): CompletableFuture[SendMessageBatchResponse] =
-              CompletableFuture.supplyAsync[SendMessageBatchResponse] { () =>
-                throw new RuntimeException("network failure")
-              }
+              CompletableFuture.supplyAsync[SendMessageBatchResponse](() => throw new RuntimeException("network failure"))
           }
 
           for {
-            _        <- withFastClock.fork
-            producer = Producer.make(client, queueUrl, Serializer.serializeString, settings)
-            errOrResults <- producer.use { p =>
-                             Stream.succeed(events).run(p.sendSink)
-                           }.either
+            _            <- withFastClock.fork
+            producer     = Producer.make(client, queueUrl, Serializer.serializeString, settings)
+            errOrResults <- producer.use(p => Stream.succeed(events).run(p.sendSink)).either
           } yield {
             assert(errOrResults.isLeft, isTrue)
           }
@@ -476,11 +460,9 @@ object ProducerSpec
           val client                     = failUnrecoverableClient
 
           for {
-            _        <- withFastClock.fork
-            producer = Producer.make(client, queueUrl, Serializer.serializeString, settings)
-            errOrResults <- producer.use { p =>
-                             Stream.succeed(events).run(p.sendSink)
-                           }.either
+            _            <- withFastClock.fork
+            producer     = Producer.make(client, queueUrl, Serializer.serializeString, settings)
+            errOrResults <- producer.use(p => Stream.succeed(events).run(p.sendSink)).either
           } yield {
             assert(errOrResults.isLeft, isTrue)
           }
@@ -500,9 +482,7 @@ object ProducerSpec
               val batchRequestEntries                                       = sendMessageBatchRequest.entries().asScala
               val (batchRequestEntriesToSucceed, batchRequestEntriesToFail) = batchRequestEntries.partition(_.messageBody() == "A")
 
-              val resultEntries = batchRequestEntriesToSucceed.map { entry =>
-                SendMessageBatchResultEntry.builder().id(entry.id()).build()
-              }.toList
+              val resultEntries = batchRequestEntriesToSucceed.map(entry => SendMessageBatchResultEntry.builder().id(entry.id()).build()).toList
 
               val errorEntries = batchRequestEntriesToFail.map { entry =>
                 BatchResultErrorEntry.builder().id(entry.id()).code("AccessDeniedException").senderFault(false).build()
@@ -521,9 +501,7 @@ object ProducerSpec
           for {
             _        <- withFastClock.fork
             producer = Producer.make(client, queueUrl, Serializer.serializeString, settings)
-            results <- producer.use { p =>
-                        p.produceBatchE(events)
-                      }
+            results  <- producer.use(p => p.produceBatchE(events))
           } yield {
             val successes = results.filter(_.isRight).collect {
               case Right(x) => x.data
@@ -556,9 +534,7 @@ object ProducerSpec
               val batchRequestEntries                                       = sendMessageBatchRequest.entries().asScala
               val (batchRequestEntriesToSucceed, batchRequestEntriesToFail) = batchRequestEntries.splitAt(2)
 
-              val resultEntries = batchRequestEntriesToSucceed.map { entry =>
-                SendMessageBatchResultEntry.builder().id(entry.id()).build()
-              }.toList
+              val resultEntries = batchRequestEntriesToSucceed.map(entry => SendMessageBatchResultEntry.builder().id(entry.id()).build()).toList
 
               val errorEntries = batchRequestEntriesToFail.map { entry =>
                 BatchResultErrorEntry.builder().id(entry.id()).code("ServiceUnavailable").senderFault(false).build()
@@ -577,9 +553,7 @@ object ProducerSpec
           for {
             _        <- withFastClock.fork
             producer = Producer.make(client, queueUrl, Serializer.serializeString, settings)
-            results <- producer.use { p =>
-                        p.produceBatchE(events)
-                      }
+            results  <- producer.use(p => p.produceBatchE(events))
           } yield {
             val successes = results.filter(_.isRight).collect {
               case Right(x) => x.data
@@ -623,9 +597,7 @@ object ProducerSpec
           for {
             _        <- withFastClock.fork
             producer = Producer.make(client, queueUrl, Serializer.serializeString, settings)
-            results <- producer.use { p =>
-                        p.produceBatchE(events)
-                      }
+            results  <- producer.use(p => p.produceBatchE(events))
           } yield {
             val failures = results.filter(_.isLeft).collect {
               case Left(x) => x.event.data
@@ -650,18 +622,14 @@ object ProducerSpec
 
             override def sendMessageBatch(sendMessageBatchRequest: SendMessageBatchRequest): CompletableFuture[SendMessageBatchResponse] = {
               invokeCount.addAndGet(1)
-              CompletableFuture.supplyAsync[SendMessageBatchResponse] { () =>
-                throw new RuntimeException("unexpected failure")
-              }
+              CompletableFuture.supplyAsync[SendMessageBatchResponse](() => throw new RuntimeException("unexpected failure"))
             }
           }
 
           for {
-            _        <- withFastClock.fork
-            producer = Producer.make(client, queueUrl, Serializer.serializeString, settings)
-            errOrResults <- producer.use { p =>
-                             p.produceBatchE(events)
-                           }.either
+            _            <- withFastClock.fork
+            producer     = Producer.make(client, queueUrl, Serializer.serializeString, settings)
+            errOrResults <- producer.use(p => p.produceBatchE(events)).either
           } yield {
             assert(errOrResults.isLeft, isTrue)
           }

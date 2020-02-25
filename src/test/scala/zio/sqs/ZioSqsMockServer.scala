@@ -17,9 +17,7 @@ object ZioSqsMockServer {
   val serverResource: Task[ZManaged[Any, Throwable, SQSRestServer]] = ZIO.effect(
     ZManaged.make(
       Task(SQSRestServerBuilder.start())
-    ) { server =>
-      UIO.effectTotal(server.stopAndWait())
-    }
+    )(server => UIO.effectTotal(server.stopAndWait()))
   )
 
   val clientResource: Task[ZManaged[Any, Throwable, SqsAsyncClient]] = ZIO.effect(
@@ -34,8 +32,6 @@ object ZioSqsMockServer {
           .endpointOverride(uri)
           .build()
       }
-    ) { client =>
-      UIO.effectTotal(client.close())
-    }
+    )(client => UIO.effectTotal(client.close()))
   )
 }

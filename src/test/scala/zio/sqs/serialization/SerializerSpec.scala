@@ -11,7 +11,7 @@ object SerializerSpec
           val expected = input
           val actual   = Serializer.serializeString(input)
 
-          assert(actual, equalTo(expected))
+          assert(actual)(equalTo(expected))
         }
       ),
       List(TestAspect.executionStrategy(ExecutionStrategy.Sequential))

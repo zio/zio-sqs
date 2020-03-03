@@ -14,10 +14,10 @@ object ProducerErrorSpec
 
           val e = ProducerError(errEntry, event)
 
-          assert(e.code, equalTo("code2")) &&
-          assert(e.message, equalTo(Some("message3"))) &&
-          assert(e.senderFault, isTrue) &&
-          assert(e.event, equalTo(event))
+          assert(e.code)(equalTo("code2")) &&
+          assert(e.message)(equalTo(Some("message3"))) &&
+          assert(e.senderFault)(isTrue) &&
+          assert(e.event)(equalTo(event))
         },
         test("it can be created from BatchResultErrorEntry without message") {
           val event    = ProducerEvent("e2")
@@ -25,10 +25,10 @@ object ProducerErrorSpec
 
           val e = ProducerError(errEntry, event)
 
-          assert(e.code, equalTo("code2")) &&
-          assert(e.message, isNone) &&
-          assert(e.senderFault, isTrue) &&
-          assert(e.event, equalTo(event))
+          assert(e.code)(equalTo("code2")) &&
+          assert(e.message)(isNone) &&
+          assert(e.senderFault)(isTrue) &&
+          assert(e.event)(equalTo(event))
         }
       ),
       List(TestAspect.executionStrategy(ExecutionStrategy.Sequential))

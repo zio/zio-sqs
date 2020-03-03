@@ -26,7 +26,7 @@ object ZioSqsSpec
             list     <- server.use(_ => sendAndGet(messages, settings))
 
           } yield {
-            assert(list.map(_.body()), equalTo(messages))
+            assert(list.map(_.body()))(equalTo(messages))
           }
         },
         testM("delete messages manually") {
@@ -44,7 +44,7 @@ object ZioSqsSpec
                    }
 
           } yield {
-            assert(list, isEmpty)
+            assert(list)(isEmpty)
           }
         },
         testM("delete messages automatically") {
@@ -62,7 +62,7 @@ object ZioSqsSpec
                    }
 
           } yield {
-            assert(list, isEmpty)
+            assert(list)(isEmpty)
           }
         }
       ),

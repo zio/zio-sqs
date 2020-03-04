@@ -223,7 +223,12 @@ object Producer {
                 val (successful, retryable, errors) = responseMapper.tupled(responsePartitioner(res))
 
                 val ret = for {
-                  _ <- URIO.when(retryable.nonEmpty)(failedQueue.offerAll(retryable.map(it => it.copy(retryCount = it.retryCount + 1))).delay(retryDelay).fork)
+                  _ <- URIO.when(retryable.nonEmpty) {
+                        failedQueue
+                          .offerAll(retryable.map(it => it.copy(retryCount = it.retryCount + 1)))
+                          .delay(retryDelay)
+                          .forkDaemon
+                      }
                   _ <- ZIO.foreach(successful)(entry => entry.done.succeed(Right(entry.event): ErrorOrEvent[T]))
                   _ <- ZIO.foreach(errors)(entry => entry.done.succeed(Left(entry.error): ErrorOrEvent[T]))
                 } yield ()

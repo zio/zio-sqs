@@ -38,7 +38,7 @@ object SqsStream {
       }
     }.forever
       .takeWhile(_.nonEmpty || !settings.stopWhenQueueEmpty)
-      .flatMap[Any, Throwable, Message](Stream.fromIterable)
+      .flatMap[Any, Throwable, Message](Stream.fromIterable(_))
       .mapM(msg => IO.when(settings.autoDelete)(deleteMessage(client, queueUrl, msg)).as(msg))
   }
 

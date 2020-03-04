@@ -1,7 +1,6 @@
 package zio.sqs.producer
 
-import java.util.function.BiFunction
-
+import scala.jdk.CollectionConverters._
 import software.amazon.awssdk.services.sqs.SqsAsyncClient
 import software.amazon.awssdk.services.sqs.model._
 import zio._
@@ -9,8 +8,6 @@ import zio.clock.Clock
 import zio.duration.Duration
 import zio.sqs.serialization.Serializer
 import zio.stream.{ Sink, Stream, ZSink, ZStream }
-
-import scala.jdk.CollectionConverters._
 
 /**
  * Producer that can be used to publish an event of type T to SQS queue
@@ -113,9 +110,9 @@ object Producer {
       failQueue  <- Queue.bounded[SqsRequestEntry[T]](eventQueueSize).toManaged(_.shutdown)
       reqRunner  = runSendMessageBatchRequest[R, T](client, failQueue, settings.retryDelay, settings.retryMaxCount) _
       reqBuilder = buildSendMessageBatchRequest(queueUrl, serializer) _
-      stream = (ZStream
+      stream = ZStream
         .fromQueue(failQueue)
-        .merge(ZStream.fromQueue(eventQueue)))
+        .merge(ZStream.fromQueue(eventQueue))
         .aggregateAsyncWithin(
           Sink.collectAllN[SqsRequestEntry[T]](settings.batchSize.toLong),
           Schedule.spaced(settings.duration)
@@ -139,7 +136,7 @@ object Producer {
 
     override def produceBatchE(es: Iterable[ProducerEvent[T]]): Task[List[ErrorOrEvent[T]]] =
       ZIO
-        .traverse(es) { e =>
+        .foreach(es) { e =>
           for {
             done <- Promise.make[Throwable, ErrorOrEvent[T]]
           } yield SqsRequestEntry(e, done, 0)
@@ -147,7 +144,7 @@ object Producer {
         .flatMap(es => eventQueue.offerAll(es) *> ZIO.collectAllPar(es.map(_.done.await)))
 
     override def produceBatch(es: Iterable[ProducerEvent[T]]): Task[List[ProducerEvent[T]]] =
-      produceBatchE(es).flatMap(rs => ZIO.traverse(rs)(r => ZIO.fromEither(r)))
+      produceBatchE(es).flatMap(rs => ZIO.foreach(rs)(r => ZIO.fromEither(r)))
 
     override def sendStreamE: Stream[Throwable, ProducerEvent[T]] => ZStream[Any, Throwable, ErrorOrEvent[T]] =
       es => es.mapMPar(settings.batchSize)(produceE)
@@ -213,29 +210,28 @@ object Producer {
     RIO.effectAsync[R with Clock, Unit]({ cb =>
       client
         .sendMessageBatch(req.inner)
-        .handleAsync[Unit](new BiFunction[SendMessageBatchResponse, Throwable, Unit] {
-          override def apply(res: SendMessageBatchResponse, err: Throwable): Unit =
-            err match {
-              case null =>
-                val m = req.entries.zipWithIndex.map(it => (it._2.toString, it._1)).toMap
+        .handleAsync[Unit]((res: SendMessageBatchResponse, err: Throwable) =>
+          err match {
+            case null =>
+              val m = req.entries.zipWithIndex.map(it => (it._2.toString, it._1)).toMap
 
-                val responsePartitioner = partitionResponse(m, retryMaxCount) _
-                val responseMapper      = mapResponse(m) _
+              val responsePartitioner = partitionResponse(m, retryMaxCount) _
+              val responseMapper      = mapResponse(m) _
 
-                val (successful, retryable, errors) = responseMapper.tupled(responsePartitioner(res))
+              val (successful, retryable, errors) = responseMapper.tupled(responsePartitioner(res))
 
-                val ret = for {
-                  _ <- URIO.when(retryable.nonEmpty)(failedQueue.offerAll(retryable.map(it => it.copy(retryCount = it.retryCount + 1))).delay(retryDelay).fork)
-                  _ <- ZIO.traverse(successful)(entry => entry.done.succeed(Right(entry.event): ErrorOrEvent[T]))
-                  _ <- ZIO.traverse(errors)(entry => entry.done.succeed(Left(entry.error): ErrorOrEvent[T]))
-                } yield ()
+              val ret = for {
+                _ <- URIO.when(retryable.nonEmpty)(failedQueue.offerAll(retryable.map(it => it.copy(retryCount = it.retryCount + 1))).delay(retryDelay).fork)
+                _ <- ZIO.foreach(successful)(entry => entry.done.succeed(Right(entry.event): ErrorOrEvent[T]))
+                _ <- ZIO.foreach(errors)(entry => entry.done.succeed(Left(entry.error): ErrorOrEvent[T]))
+              } yield ()
 
-                cb(ret)
-              case ex =>
-                val ret = ZIO.foreach_(req.entries.map(_.done))(_.fail(ex)) *> RIO.fail(ex)
-                cb(ret)
-            }
-        })
+              cb(ret)
+            case ex =>
+              val ret = ZIO.foreach_(req.entries.map(_.done))(_.fail(ex)) *> RIO.fail(ex)
+              cb(ret)
+          }
+        )
       ()
     })
 

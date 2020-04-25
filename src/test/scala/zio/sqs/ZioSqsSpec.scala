@@ -29,7 +29,7 @@ object ZioSqsSpec extends DefaultRunnableSpec {
       },
       testM("delete messages manually") {
         val settings: SqsStreamSettings =
-          SqsStreamSettings(stopWhenQueueEmpty = true, autoDelete = false, waitTimeSeconds = 1)
+          SqsStreamSettings(stopWhenQueueEmpty = true, autoDelete = false, waitTimeSeconds = Some(1))
 
         for {
           messages <- gen.sample.map(_.value).run(Sink.await[List[String]])
@@ -44,7 +44,7 @@ object ZioSqsSpec extends DefaultRunnableSpec {
         } yield assert(list)(isEmpty)
       },
       testM("delete messages automatically") {
-        val settings: SqsStreamSettings = SqsStreamSettings(stopWhenQueueEmpty = true, waitTimeSeconds = 1)
+        val settings: SqsStreamSettings = SqsStreamSettings(stopWhenQueueEmpty = true, waitTimeSeconds = Some(1))
 
         for {
           messages <- gen.sample.map(_.value).run(Sink.await[List[String]])

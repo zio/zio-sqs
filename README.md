@@ -132,8 +132,8 @@ def apply(
 - `attributeNames`: see the [related page on AWS docs](https://docs.aws.amazon.com/AWSSimpleQueueService/latest/APIReference/API_ReceiveMessage.html)
 - `maxNumberOfMessages`: number of messages to query at once from SQS (default `1`)
 - `messageAttributeNames`: see the [related page on AWS docs](https://docs.aws.amazon.com/AWSSimpleQueueService/latest/APIReference/API_ReceiveMessage.html)
-- `visibilityTimeout`: see the [related page on AWS docs](https://docs.aws.amazon.com/AWSSimpleQueueService/latest/SQSDeveloperGuide/sqs-visibility-timeout.html) (default `30`)
-- `waitTimeSeconds`: see the [related page on AWS docs](https://docs.aws.amazon.com/AWSSimpleQueueService/latest/SQSDeveloperGuide/sqs-long-polling.html) (default `20`),
+- `visibilityTimeout`: see the [related page on AWS docs](https://docs.aws.amazon.com/AWSSimpleQueueService/latest/SQSDeveloperGuide/sqs-visibility-timeout.html) (default `Some(30)`. If set to `None`, the queue's value will be used.)
+- `waitTimeSeconds`: see the [related page on AWS docs](https://docs.aws.amazon.com/AWSSimpleQueueService/latest/SQSDeveloperGuide/sqs-long-polling.html) (default `Some(20)`. If set to `None`, the queue's value will be used.)
 
 **Example:**
 
@@ -143,7 +143,7 @@ import zio.sqs.{SqsStream, SqsStreamSettings}
 SqsStream(
   client,
   queueUrl,
-  SqsStreamSettings(stopWhenQueueEmpty = true, waitTimeSeconds = 3)
+  SqsStreamSettings(stopWhenQueueEmpty = true, waitTimeSeconds = Some(3))
 ).foreach(msg => UIO(println(msg.body)))
 ```
 
@@ -199,7 +199,7 @@ object TestApp extends App {
       _ <- SqsStream(
             client,
             queueUrl,
-            SqsStreamSettings(stopWhenQueueEmpty = true, waitTimeSeconds = 3)
+            SqsStreamSettings(stopWhenQueueEmpty = true, waitTimeSeconds = Some(3))
           ).foreach(msg => UIO(println(msg.body)))
     } yield 0).foldM(e => UIO(println(e.toString)).as(1), IO.succeed)
 }

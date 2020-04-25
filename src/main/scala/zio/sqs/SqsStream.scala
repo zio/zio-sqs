@@ -15,14 +15,16 @@ object SqsStream {
     settings: SqsStreamSettings = SqsStreamSettings()
   ): Stream[Throwable, Message] = {
 
-    val request = ReceiveMessageRequest.builder
+    val builder = ReceiveMessageRequest.builder
       .queueUrl(queueUrl)
       .attributeNamesWithStrings(settings.attributeNames.asJava)
       .messageAttributeNames(settings.messageAttributeNames.asJava)
       .maxNumberOfMessages(settings.maxNumberOfMessages)
-      .visibilityTimeout(settings.visibilityTimeout)
-      .waitTimeSeconds(settings.waitTimeSeconds)
-      .build
+
+    settings.visibilityTimeout.foreach(builder.visibilityTimeout(_))
+    settings.waitTimeSeconds.foreach(builder.waitTimeSeconds(_))
+
+    val request = builder.build
 
     Stream.fromEffect {
       Task.effectAsync[List[Message]] { cb =>

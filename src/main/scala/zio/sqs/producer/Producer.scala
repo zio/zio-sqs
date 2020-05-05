@@ -1,6 +1,7 @@
 package zio.sqs.producer
 
 import scala.jdk.CollectionConverters._
+import java.util.function.BiFunction
 import software.amazon.awssdk.services.sqs.SqsAsyncClient
 import software.amazon.awssdk.services.sqs.model._
 import zio._
@@ -210,33 +211,34 @@ object Producer {
     RIO.effectAsync[R with Clock, Unit]({ cb =>
       client
         .sendMessageBatch(req.inner)
-        .handleAsync[Unit]((res: SendMessageBatchResponse, err: Throwable) =>
-          err match {
-            case null =>
-              val m = req.entries.zipWithIndex.map(it => (it._2.toString, it._1)).toMap
+        .handleAsync[Unit](new BiFunction[SendMessageBatchResponse, Throwable, Unit] {
+          override def apply(res: SendMessageBatchResponse, err: Throwable): Unit =
+            err match {
+              case null =>
+                val m = req.entries.zipWithIndex.map(it => (it._2.toString, it._1)).toMap
 
-              val responsePartitioner = partitionResponse(m, retryMaxCount) _
-              val responseMapper      = mapResponse(m) _
+                val responsePartitioner = partitionResponse(m, retryMaxCount) _
+                val responseMapper      = mapResponse(m) _
 
-              val (successful, retryable, errors) = responseMapper.tupled(responsePartitioner(res))
+                val (successful, retryable, errors) = responseMapper.tupled(responsePartitioner(res))
 
-              val ret = for {
-                _ <- URIO.when(retryable.nonEmpty) {
-                      failedQueue
-                        .offerAll(retryable.map(it => it.copy(retryCount = it.retryCount + 1)))
-                        .delay(retryDelay)
-                        .forkDaemon
-                    }
-                _ <- ZIO.foreach(successful)(entry => entry.done.succeed(Right(entry.event): ErrorOrEvent[T]))
-                _ <- ZIO.foreach(errors)(entry => entry.done.succeed(Left(entry.error): ErrorOrEvent[T]))
-              } yield ()
+                val ret = for {
+                  _ <- URIO.when(retryable.nonEmpty) {
+                        failedQueue
+                          .offerAll(retryable.map(it => it.copy(retryCount = it.retryCount + 1)))
+                          .delay(retryDelay)
+                          .forkDaemon
+                      }
+                  _ <- ZIO.foreach(successful)(entry => entry.done.succeed(Right(entry.event): ErrorOrEvent[T]))
+                  _ <- ZIO.foreach(errors)(entry => entry.done.succeed(Left(entry.error): ErrorOrEvent[T]))
+                } yield ()
 
-              cb(ret)
-            case ex =>
-              val ret = ZIO.foreach_(req.entries.map(_.done))(_.fail(ex)) *> RIO.fail(ex)
-              cb(ret)
-          }
-        )
+                cb(ret)
+              case ex =>
+                val ret = ZIO.foreach_(req.entries.map(_.done))(_.fail(ex)) *> RIO.fail(ex)
+                cb(ret)
+            }
+        })
       ()
     })
 

@@ -1,14 +1,14 @@
 package zio.sqs.producer
 
-import scala.jdk.CollectionConverters._
 import java.util.function.BiFunction
+import scala.jdk.CollectionConverters._
 import software.amazon.awssdk.services.sqs.SqsAsyncClient
 import software.amazon.awssdk.services.sqs.model._
 import zio._
 import zio.clock.Clock
 import zio.duration.Duration
 import zio.sqs.serialization.Serializer
-import zio.stream.{ Sink, Stream, ZSink, ZStream }
+import zio.stream.{ Stream, ZSink, ZStream, ZTransducer }
 
 /**
  * Producer that can be used to publish an event of type T to SQS queue
@@ -64,7 +64,7 @@ trait Producer[T] {
    * Fails if the server returns an error for any of the published events.
    * @return sink for publishing.
    */
-  def sendSink: ZSink[Any, Throwable, Nothing, Iterable[ProducerEvent[T]], Unit]
+  def sendSink: ZSink[Any, Throwable, Iterable[ProducerEvent[T]], Unit]
 
   /**
    * Publishes a batch of events.
@@ -115,7 +115,7 @@ object Producer {
         .fromQueue(failQueue)
         .merge(ZStream.fromQueue(eventQueue))
         .aggregateAsyncWithin(
-          Sink.collectAllN[SqsRequestEntry[T]](settings.batchSize.toLong),
+          ZTransducer.collectAllN[SqsRequestEntry[T]](settings.batchSize.toLong),
           Schedule.spaced(settings.duration)
         )
         .map(reqBuilder)
@@ -153,7 +153,7 @@ object Producer {
     override def sendStream: Stream[Throwable, ProducerEvent[T]] => ZStream[Any, Throwable, ProducerEvent[T]] =
       es => es.mapMPar(settings.batchSize)(produce)
 
-    override def sendSink: ZSink[Any, Throwable, Nothing, Iterable[ProducerEvent[T]], Unit] =
+    override def sendSink: ZSink[Any, Throwable, Iterable[ProducerEvent[T]], Unit] =
       ZSink.drain.contramapM(es => produceBatch(es))
 
     private[sqs] def produceE(e: ProducerEvent[T]): Task[ErrorOrEvent[T]] =

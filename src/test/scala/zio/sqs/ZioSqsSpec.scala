@@ -21,7 +21,7 @@ object ZioSqsSpec extends DefaultRunnableSpec {
         val settings: SqsStreamSettings = SqsStreamSettings(stopWhenQueueEmpty = true)
 
         for {
-          messages <- gen.sample.map(_.value).run(Sink.await[List[String]])
+          messages <- gen.sample.map(_.value).run(Sink.head[List[String]]).someOrFailException
           server   <- serverResource
           list     <- server.use(_ => sendAndGet(messages, settings))
 
@@ -32,7 +32,7 @@ object ZioSqsSpec extends DefaultRunnableSpec {
           SqsStreamSettings(stopWhenQueueEmpty = true, autoDelete = false, waitTimeSeconds = Some(1))
 
         for {
-          messages <- gen.sample.map(_.value).run(Sink.await[List[String]])
+          messages <- gen.sample.map(_.value).run(Sink.head[List[String]]).someOrFailException
           server   <- serverResource
           list <- server.use { _ =>
                    for {
@@ -47,7 +47,7 @@ object ZioSqsSpec extends DefaultRunnableSpec {
         val settings: SqsStreamSettings = SqsStreamSettings(stopWhenQueueEmpty = true, waitTimeSeconds = Some(1))
 
         for {
-          messages <- gen.sample.map(_.value).run(Sink.await[List[String]])
+          messages <- gen.sample.map(_.value).run(Sink.head[List[String]]).someOrFailException
           server   <- serverResource
           list <- server.use { _ =>
                    for {

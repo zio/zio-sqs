@@ -9,7 +9,7 @@ This library is a [ZIO](https://github.com/zio/zio)-powered client for AWS SQS. 
 To use `zio-sqs`, add the following line in your `build.sbt` file:
 
 ```
-libraryDependencies += "dev.zio" %% "zio-sqs" % "0.2.3"
+libraryDependencies += "dev.zio" %% "zio-sqs" % "0.2.4"
 ```
 
 ## How to use
@@ -56,13 +56,13 @@ where:
     Fails the `Task` if the server returns an error.
   - `def produceBatch(es: Iterable[ProducerEvent[T]]): Task[List[ProducerEvent[T]]]` - Publishes a batch of events.
     Fails the `Task` if the server returns an error for any of the provided events.
-  - `def sendStream: Stream[Throwable, ProducerEvent[T]] => ZStream[Clock, Throwable, ProducerEvent[T]]` - Stream that takes the events and produces a stream with published events.
+  - `def sendStream: Stream[Throwable, ProducerEvent[T]] => ZStream[Any, Throwable, ProducerEvent[T]]` - Stream that takes the events and produces a stream with published events.
     Fails if the server returns an error for any of the published events.
   - `def sendSink: ZSink[Any, Throwable, Nothing, Iterable[ProducerEvent[T]], Unit]` - Sink that can be used to publish events.
     Fails if the server returns an error for any of the published events.
 
 - methods that do not fail the operation but return `ErrorOrEvent[T]` (defied as `Either[ProducerError[T], ProducerEvent[T]]`).
-  - `def sendStreamE: Stream[Throwable, ProducerEvent[T]] => ZStream[Clock, Throwable, ErrorOrEvent[T]]` - Stream that takes the events and produces a stream with the results.
+  - `def sendStreamE: Stream[Throwable, ProducerEvent[T]] => ZStream[Any, Throwable, ErrorOrEvent[T]]` - Stream that takes the events and produces a stream with the results.
     Doesn't fail if the server returns an error for any of the published events.
   - `def produceBatchE(es: Iterable[ProducerEvent[T]]): Task[List[ErrorOrEvent[T]]]` - Publishes a batch of events. Completes when all input events were processed (published to the server or failed with an error).
     Doesn't fail the `Task` if the server returns an error for any of the provided events.

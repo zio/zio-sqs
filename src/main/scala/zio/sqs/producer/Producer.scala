@@ -57,7 +57,7 @@ trait Producer[T] {
    *
    * @return stream with published events.
    */
-  def sendStream: Stream[Throwable, ProducerEvent[T]] => ZStream[Clock, Throwable, ProducerEvent[T]]
+  def sendStream: Stream[Throwable, ProducerEvent[T]] => ZStream[Any, Throwable, ProducerEvent[T]]
 
   /**
    * Sink that can be used to publish events.
@@ -82,7 +82,7 @@ trait Producer[T] {
    * @return stream with published events or errors [[zio.sqs.producer.ErrorOrEvent]].
    *         Task completes when all input events were processed (published to the server or failed with an error).
    */
-  def sendStreamE: Stream[Throwable, ProducerEvent[T]] => ZStream[Clock, Throwable, ErrorOrEvent[T]]
+  def sendStreamE: Stream[Throwable, ProducerEvent[T]] => ZStream[Any, Throwable, ErrorOrEvent[T]]
 }
 
 object Producer {
@@ -142,7 +142,7 @@ object Producer {
             done <- Promise.make[Throwable, ErrorOrEvent[T]]
           } yield SqsRequestEntry(e, done, 0)
         }
-        .flatMap(es => eventQueue.offerAll(es) *> ZIO.collectAllPar(es.map(_.done.await)))
+        .flatMap(es => eventQueue.offerAll(es) *> ZIO.foreachPar(es)(_.done.await))
 
     override def produceBatch(es: Iterable[ProducerEvent[T]]): Task[List[ProducerEvent[T]]] =
       produceBatchE(es).flatMap(rs => ZIO.foreach(rs)(r => ZIO.fromEither(r)))

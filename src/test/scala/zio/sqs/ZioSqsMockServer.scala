@@ -11,8 +11,8 @@ import zio.{ Task, UIO, ZIO, ZManaged }
 object ZioSqsMockServer {
   private val staticCredentialsProvider: StaticCredentialsProvider =
     StaticCredentialsProvider.create(AwsBasicCredentials.create("key", "key"))
-  private val uri            = new URI("http://localhost:9324")
-  private val region: Region = Region.AP_NORTHEAST_2
+  private val uri                                                  = new URI("http://localhost:9324")
+  private val region: Region                                       = Region.AP_NORTHEAST_2
 
   val serverResource: Task[ZManaged[Any, Throwable, SQSRestServer]] = ZIO.effect(
     ZManaged.make(

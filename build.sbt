@@ -28,12 +28,12 @@ publishTo := sonatypePublishToBundle.value
 libraryDependencies ++= Seq(
   "dev.zio"                %% "zio"                     % "1.0.0-RC20",
   "dev.zio"                %% "zio-streams"             % "1.0.0-RC20",
-  "software.amazon.awssdk" % "sqs"                      % "2.13.24",
+  "software.amazon.awssdk"  % "sqs"                     % "2.13.24",
   "org.scala-lang.modules" %% "scala-collection-compat" % "2.1.6",
   "dev.zio"                %% "zio-test"                % "1.0.0-RC20" % "test",
   "dev.zio"                %% "zio-test-sbt"            % "1.0.0-RC20" % "test",
-  "org.elasticmq"          %% "elasticmq-rest-sqs"      % "0.15.6" % "test",
-  "org.elasticmq"          %% "elasticmq-core"          % "0.15.6" % "test",
+  "org.elasticmq"          %% "elasticmq-rest-sqs"      % "0.15.6"     % "test",
+  "org.elasticmq"          %% "elasticmq-core"          % "0.15.6"     % "test",
   compilerPlugin("org.typelevel" %% "kind-projector"     % "0.10.3"),
   compilerPlugin("com.olegpy"    %% "better-monadic-for" % "0.3.1")
 )
@@ -68,7 +68,7 @@ scalacOptions ++= Seq(
       "-opt-warnings",
       "-opt:l:inline"
     )
-  case _ => Nil
+  case _             => Nil
 })
 
 fork in run := true

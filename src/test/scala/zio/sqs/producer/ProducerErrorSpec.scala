@@ -11,7 +11,7 @@ object ProducerErrorSpec extends DefaultRunnableSpec {
   override def spec: ZSpec[TestEnvironment, Any] =
     suite("ProducerError")(
       test("it can be created from BatchResultErrorEntry") {
-        val event = ProducerEvent("e1")
+        val event    = ProducerEvent("e1")
         val errEntry =
           BatchResultErrorEntry.builder().id("id1").code("code2").message("message3").senderFault(true).build()
 

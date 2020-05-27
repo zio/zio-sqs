@@ -22,11 +22,12 @@ object ProducerEvent {
   /**
    * Creates an event from a string without additional attributes or parameters.
    */
-  def apply(body: String): ProducerEvent[String] = ProducerEvent(
-    data = body,
-    attributes = Map.empty[String, MessageAttributeValue],
-    groupId = None,
-    deduplicationId = None
-  )
+  def apply(body: String): ProducerEvent[String] =
+    ProducerEvent(
+      data = body,
+      attributes = Map.empty[String, MessageAttributeValue],
+      groupId = None,
+      deduplicationId = None
+    )
 
 }

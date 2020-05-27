@@ -109,17 +109,16 @@ object Producer {
     for {
       eventQueue <- Queue.bounded[SqsRequestEntry[T]](eventQueueSize).toManaged(_.shutdown)
       failQueue  <- Queue.bounded[SqsRequestEntry[T]](eventQueueSize).toManaged(_.shutdown)
-      reqRunner  = runSendMessageBatchRequest[R, T](client, failQueue, settings.retryDelay, settings.retryMaxCount) _
-      reqBuilder = buildSendMessageBatchRequest(queueUrl, serializer) _
-      stream = ZStream
-        .fromQueue(failQueue)
-        .merge(ZStream.fromQueue(eventQueue))
-        .aggregateAsyncWithin(
-          ZTransducer.collectAllN[SqsRequestEntry[T]](settings.batchSize.toLong),
-          Schedule.spaced(settings.duration)
-        )
-        .map(reqBuilder)
-        .mapMPar(settings.parallelism)(reqRunner) // TODO: replace all `mapMPar` in this file with `mapMParUnordered` when zio/zio#2547 is fixed
+      reqRunner   = runSendMessageBatchRequest[R, T](client, failQueue, settings.retryDelay, settings.retryMaxCount) _
+      reqBuilder  = buildSendMessageBatchRequest(queueUrl, serializer) _
+      stream      = ZStream.fromQueue(failQueue)
+                      .merge(ZStream.fromQueue(eventQueue))
+                      .aggregateAsyncWithin(
+                        ZTransducer.collectAllN[SqsRequestEntry[T]](settings.batchSize.toLong),
+                        Schedule.spaced(settings.duration)
+                      )
+                      .map(reqBuilder)
+                      .mapMPar(settings.parallelism)(reqRunner) // TODO: replace all `mapMPar` in this file with `mapMParUnordered` when zio/zio#2547 is fixed
       _ <- stream.runDrain.toManaged_.fork
     } yield new DefaultProducer[T](eventQueue, settings)
   }
@@ -224,17 +223,17 @@ object Producer {
 
                 val ret = for {
                   _ <- URIO.when(retryable.nonEmpty) {
-                        failedQueue
-                          .offerAll(retryable.map(it => it.copy(retryCount = it.retryCount + 1)))
-                          .delay(retryDelay)
-                          .forkDaemon
-                      }
+                         failedQueue
+                           .offerAll(retryable.map(it => it.copy(retryCount = it.retryCount + 1)))
+                           .delay(retryDelay)
+                           .forkDaemon
+                       }
                   _ <- ZIO.foreach(successful)(entry => entry.done.succeed(Right(entry.event): ErrorOrEvent[T]))
                   _ <- ZIO.foreach(errors)(entry => entry.done.succeed(Left(entry.error): ErrorOrEvent[T]))
                 } yield ()
 
                 cb(ret)
-              case ex =>
+              case ex   =>
                 val ret = ZIO.foreach_(req.entries.map(_.done))(_.fail(ex)) *> RIO.fail(ex)
                 cb(ret)
             }
@@ -269,7 +268,7 @@ object Producer {
   )(successful: Iterable[SendMessageBatchResultEntry], retryable: Iterable[BatchResultErrorEntry], errors: Iterable[BatchResultErrorEntry]) = {
     val successfulEntries = successful.map(res => m(res.id()))
     val retryableEntries  = retryable.map(res => m(res.id()))
-    val errorEntries = errors.map { err =>
+    val errorEntries      = errors.map { err =>
       val entry = m(err.id())
       SqsResponseErrorEntry(entry.done, ProducerError(err, entry.event))
     }

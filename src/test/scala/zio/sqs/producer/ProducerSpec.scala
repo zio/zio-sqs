@@ -44,14 +44,12 @@ object ProducerSpec extends DefaultRunnableSpec {
         )
 
         for {
-          done         <- Promise.make[Throwable, ErrorOrEvent[String]]
+          done        <- Promise.make[Throwable, ErrorOrEvent[String]]
           requestEntry = SqsRequestEntry(pe, done, 10)
-          isDone       <- requestEntry.done.isDone
-        } yield {
-          assert(requestEntry.event)(equalTo(pe)) &&
+          isDone      <- requestEntry.done.isDone
+        } yield assert(requestEntry.event)(equalTo(pe)) &&
           assert(isDone)(isFalse) &&
           assert(requestEntry.retryCount)(equalTo(10))
-        }
       },
       testM("SqsRequest can be created") {
         val attr = MessageAttributeValue
@@ -80,29 +78,25 @@ object ProducerSpec extends DefaultRunnableSpec {
           .build()
 
         for {
-          done         <- Promise.make[Throwable, ErrorOrEvent[String]]
+          done        <- Promise.make[Throwable, ErrorOrEvent[String]]
           requestEntry = SqsRequestEntry(pe, done, 10)
           request      = SqsRequest(batchReq, List(requestEntry))
-        } yield {
-          assert(request.inner)(equalTo(batchReq)) &&
+        } yield assert(request.inner)(equalTo(batchReq)) &&
           assert(request.entries)(equalTo(List(requestEntry)))
-        }
       },
       testM("SqsResponseErrorEntry can be created") {
-        val event = ProducerEvent("e1")
+        val event    = ProducerEvent("e1")
         val errEntry =
           BatchResultErrorEntry.builder().id("id1").code("code2").message("message3").senderFault(true).build()
 
         val eventError = ProducerError(errEntry, event)
 
         for {
-          done     <- Promise.make[Throwable, ErrorOrEvent[String]]
+          done    <- Promise.make[Throwable, ErrorOrEvent[String]]
           errEntry = SqsResponseErrorEntry(done, eventError)
-          isDone   <- errEntry.done.isDone
-        } yield {
-          assert(errEntry.error)(equalTo(eventError)) &&
+          isDone  <- errEntry.done.isDone
+        } yield assert(errEntry.error)(equalTo(eventError)) &&
           assert(isDone)(isFalse)
-        }
       },
       testM("SendMessageBatchResponse can be partitioned") {
         val retryMaxCount = 10
@@ -111,25 +105,22 @@ object ProducerSpec extends DefaultRunnableSpec {
         val bodies        = rs.map(_ + 'A').map(_.toChar.toString)
         val retries       = List(1, 2, retryMaxCount, 3)
         for {
-          dones          <- ZIO.foreach(Range(0, 4))(_ => Promise.make[Throwable, ErrorOrEvent[String]])
-          requestEntries = bodies.zip(dones).zip(retries).map { case ((a, b), c) => SqsRequestEntry(ProducerEvent(a), b, c) }
-          m              = ids.zip(requestEntries).toMap
-          resultEntry0   = SendMessageBatchResultEntry.builder().id("0").build()
-          errorEntry1    = BatchResultErrorEntry.builder().id("1").code("ServiceUnavailable").senderFault(false).build()
-          errorEntry2    = BatchResultErrorEntry.builder().id("2").code("ThrottlingException").senderFault(false).build()
-          errorEntry3    = BatchResultErrorEntry.builder().id("3").code("AccessDeniedException").senderFault(false).build()
-          res = SendMessageBatchResponse
-            .builder()
-            .successful(resultEntry0)
-            .failed(errorEntry1, errorEntry2, errorEntry3)
-            .build()
+          dones                          <- ZIO.foreach(Range(0, 4))(_ => Promise.make[Throwable, ErrorOrEvent[String]])
+          requestEntries                  = bodies.zip(dones).zip(retries).map { case ((a, b), c) => SqsRequestEntry(ProducerEvent(a), b, c) }
+          m                               = ids.zip(requestEntries).toMap
+          resultEntry0                    = SendMessageBatchResultEntry.builder().id("0").build()
+          errorEntry1                     = BatchResultErrorEntry.builder().id("1").code("ServiceUnavailable").senderFault(false).build()
+          errorEntry2                     = BatchResultErrorEntry.builder().id("2").code("ThrottlingException").senderFault(false).build()
+          errorEntry3                     = BatchResultErrorEntry.builder().id("3").code("AccessDeniedException").senderFault(false).build()
+          res                             = SendMessageBatchResponse.builder()
+                                              .successful(resultEntry0)
+                                              .failed(errorEntry1, errorEntry2, errorEntry3)
+                                              .build()
           partitioner                     = Producer.partitionResponse(m, retryMaxCount) _
           (successful, retryable, errors) = partitioner(res)
-        } yield {
-          assert(successful.toList.size)(equalTo(1)) &&
+        } yield assert(successful.toList.size)(equalTo(1)) &&
           assert(retryable.toList.size)(equalTo(1)) &&
           assert(errors.toList.size)(equalTo(2))
-        }
       },
       testM("SendMessageBatchResponse can be partitioned and mapped") {
         val retryMaxCount = 10
@@ -138,24 +129,22 @@ object ProducerSpec extends DefaultRunnableSpec {
         val bodies        = rs.map(_ + 'A').map(_.toChar.toString)
         val retries       = List(1, 2, retryMaxCount, 3)
         for {
-          dones          <- ZIO.foreach(Range(0, 4))(_ => Promise.make[Throwable, ErrorOrEvent[String]])
-          requestEntries = bodies.zip(dones).zip(retries).map { case ((a, b), c) => SqsRequestEntry(ProducerEvent(a), b, c) }
-          m              = ids.zip(requestEntries).toMap
-          resultEntry0   = SendMessageBatchResultEntry.builder().id("0").build()
-          errorEntry1    = BatchResultErrorEntry.builder().id("1").code("ServiceUnavailable").senderFault(false).build()
-          errorEntry2    = BatchResultErrorEntry.builder().id("2").code("ThrottlingException").senderFault(false).build()
-          errorEntry3    = BatchResultErrorEntry.builder().id("3").code("AccessDeniedException").senderFault(false).build()
-          res = SendMessageBatchResponse
-            .builder()
-            .successful(resultEntry0)
-            .failed(errorEntry1, errorEntry2, errorEntry3)
-            .build()
+          dones                                               <- ZIO.foreach(Range(0, 4))(_ => Promise.make[Throwable, ErrorOrEvent[String]])
+          requestEntries                                       = bodies.zip(dones).zip(retries).map { case ((a, b), c) => SqsRequestEntry(ProducerEvent(a), b, c) }
+          m                                                    = ids.zip(requestEntries).toMap
+          resultEntry0                                         = SendMessageBatchResultEntry.builder().id("0").build()
+          errorEntry1                                          = BatchResultErrorEntry.builder().id("1").code("ServiceUnavailable").senderFault(false).build()
+          errorEntry2                                          = BatchResultErrorEntry.builder().id("2").code("ThrottlingException").senderFault(false).build()
+          errorEntry3                                          = BatchResultErrorEntry.builder().id("3").code("AccessDeniedException").senderFault(false).build()
+          res                                                  = SendMessageBatchResponse.builder()
+                                                                   .successful(resultEntry0)
+                                                                   .failed(errorEntry1, errorEntry2, errorEntry3)
+                                                                   .build()
           partitioner                                          = Producer.partitionResponse(m, retryMaxCount) _
           (successful, retryable, errors)                      = partitioner(res)
           mapper                                               = Producer.mapResponse(m) _
           (successfulEntries, retryableEntries, errorsEntries) = mapper(successful, retryable, errors)
-        } yield {
-          assert(successful.toList.size)(equalTo(1)) &&
+        } yield assert(successful.toList.size)(equalTo(1)) &&
           assert(retryable.toList.size)(equalTo(1)) &&
           assert(errors.toList.size)(equalTo(2)) &&
           assert(successfulEntries.toList.size)(equalTo(1)) &&
@@ -164,7 +153,6 @@ object ProducerSpec extends DefaultRunnableSpec {
           assert(successfulEntries.toList.map(_.event.data))(hasSameElements(List("A"))) &&
           assert(retryableEntries.toList.map(_.event.data))(hasSameElements(List("B"))) &&
           assert(errorsEntries.toList.map(_.error.event.data))(hasSameElements(List("C", "D")))
-        }
       },
       testM("buildSendMessageBatchRequest creates a new request") {
         val queueUrl = "sqs://queue"
@@ -192,10 +180,10 @@ object ProducerSpec extends DefaultRunnableSpec {
 
         for {
           reqEntries <- ZIO.foreach(events) { event =>
-                         for {
-                           done <- Promise.make[Throwable, ErrorOrEvent[String]]
-                         } yield SqsRequestEntry[String](event, done, 0)
-                       }
+                          for {
+                            done <- Promise.make[Throwable, ErrorOrEvent[String]]
+                          } yield SqsRequestEntry[String](event, done, 0)
+                        }
         } yield {
           val req = Producer.buildSendMessageBatchRequest[String](queueUrl, Serializer.serializeString)(reqEntries)
 
@@ -224,38 +212,37 @@ object ProducerSpec extends DefaultRunnableSpec {
         val settings: ProducerSettings = ProducerSettings()
         val eventCount                 = settings.batchSize
         for {
-          events <- Util
-                     .listOfStringsN(eventCount)
-                     .sample
-                     .map(_.value.map(ProducerEvent(_)))
-                     .run(Sink.head[List[ProducerEvent[String]]])
-                     .someOrFailException
+          events     <- Util.listOfStringsN(eventCount)
+                          .sample
+                          .map(_.value.map(ProducerEvent(_)))
+                          .run(Sink.head[List[ProducerEvent[String]]])
+                          .someOrFailException
           server     <- serverResource
           client     <- clientResource
           retryQueue <- queueResource(16)
-          dones <- server.use {
-                    _ =>
-                      client.use {
-                        c =>
-                          retryQueue.use {
-                            q =>
-                              for {
-                                _        <- Utils.createQueue(c, queueName)
-                                queueUrl <- Utils.getQueueUrl(c, queueName)
-                                reqEntries <- ZIO.foreach(events) { event =>
-                                               for {
-                                                 done <- Promise.make[Throwable, ErrorOrEvent[String]]
-                                               } yield SqsRequestEntry[String](event, done, 0)
-                                             }
-                                req        = Producer.buildSendMessageBatchRequest[String](queueUrl, Serializer.serializeString)(reqEntries)
-                                retryDelay = 1.millisecond
-                                retryCount = 1
-                                reqSender  = Producer.runSendMessageBatchRequest(c, q, retryDelay, retryCount) _
-                                _          <- reqSender(req)
-                              } yield ZIO.foreach(reqEntries)(entry => entry.done.await)
-                          }
-                      }
-                  }
+          dones      <- server.use {
+                          _ =>
+                            client.use {
+                              c =>
+                                retryQueue.use {
+                                  q =>
+                                    for {
+                                      _          <- Utils.createQueue(c, queueName)
+                                      queueUrl   <- Utils.getQueueUrl(c, queueName)
+                                      reqEntries <- ZIO.foreach(events) { event =>
+                                                      for {
+                                                        done <- Promise.make[Throwable, ErrorOrEvent[String]]
+                                                      } yield SqsRequestEntry[String](event, done, 0)
+                                                    }
+                                      req         = Producer.buildSendMessageBatchRequest[String](queueUrl, Serializer.serializeString)(reqEntries)
+                                      retryDelay  = 1.millisecond
+                                      retryCount  = 1
+                                      reqSender   = Producer.runSendMessageBatchRequest(c, q, retryDelay, retryCount) _
+                                      _          <- reqSender(req)
+                                    } yield ZIO.foreach(reqEntries)(entry => entry.done.await)
+                                }
+                            }
+                        }
           isAllRight <- dones.map(_.forall(_.isRight))
         } yield assert(isAllRight)(isTrue)
       },
@@ -265,31 +252,31 @@ object ProducerSpec extends DefaultRunnableSpec {
         val eventCount                 = (settings.batchSize * 2) + 3
 
         for {
-          events <- Util
-                     .listOfStringsN(eventCount)
-                     .sample
-                     .map(_.value.map(ProducerEvent(_)))
-                     .run(Sink.head[List[ProducerEvent[String]]])
-                     .someOrFailException
-          server <- serverResource
-          client <- clientResource
+          events  <- Util
+                       .listOfStringsN(eventCount)
+                       .sample
+                       .map(_.value.map(ProducerEvent(_)))
+                       .run(Sink.head[List[ProducerEvent[String]]])
+                       .someOrFailException
+          server  <- serverResource
+          client  <- clientResource
           results <- server.use {
-                      _ =>
-                        client.use { c =>
-                          for {
-                            _           <- withFastClock.fork
-                            _           <- Utils.createQueue(c, queueName)
-                            queueUrl    <- Utils.getQueueUrl(c, queueName)
-                            producer    = Producer.make(c, queueUrl, Serializer.serializeString, settings)
-                            resultQueue <- Queue.unbounded[ErrorOrEvent[String]]
-                            _ <- producer.use { p =>
-                                  p.sendStreamE(Stream(events: _*))
-                                    .foreach(resultQueue.offer) // replace with .via when ZIO > RC17 is released -- Sink.collectAll[SqsPublishErrorOrResult]
-                                }.fork
-                            results <- ZIO.collectAll(List.fill(eventCount)(resultQueue.take))
-                          } yield results
-                        }
-                    }
+                       _ =>
+                         client.use { c =>
+                           for {
+                             _           <- withFastClock.fork
+                             _           <- Utils.createQueue(c, queueName)
+                             queueUrl    <- Utils.getQueueUrl(c, queueName)
+                             producer     = Producer.make(c, queueUrl, Serializer.serializeString, settings)
+                             resultQueue <- Queue.unbounded[ErrorOrEvent[String]]
+                             _           <- producer.use { p =>
+                                              p.sendStreamE(Stream(events: _*))
+                                                .foreach(resultQueue.offer) // replace with .via when ZIO > RC17 is released -- Sink.collectAll[SqsPublishErrorOrResult]
+                                            }.fork
+                             results     <- ZIO.collectAll(List.fill(eventCount)(resultQueue.take))
+                           } yield results
+                         }
+                     }
         } yield assert(results.size)(equalTo(events.size)) &&
           assert(results.forall(_.isRight))(isTrue)
       },
@@ -302,7 +289,7 @@ object ProducerSpec extends DefaultRunnableSpec {
 
         for {
           _           <- withFastClock.fork
-          producer    = Producer.make(client, queueUrl, Serializer.serializeString, settings)
+          producer     = Producer.make(client, queueUrl, Serializer.serializeString, settings)
           errOrResult <- producer.use(p => p.sendStream(Stream(events: _*)).runDrain.either)
         } yield assert(errOrResult.isLeft)(isTrue)
       },
@@ -312,25 +299,25 @@ object ProducerSpec extends DefaultRunnableSpec {
         val eventCount                 = settings.batchSize
 
         for {
-          events <- Util
-                     .listOfStringsN(eventCount)
-                     .sample
-                     .map(_.value.map(ProducerEvent(_)))
-                     .run(Sink.head[List[ProducerEvent[String]]])
-                     .someOrFailException
-          server <- serverResource
-          client <- clientResource
+          events  <- Util
+                       .listOfStringsN(eventCount)
+                       .sample
+                       .map(_.value.map(ProducerEvent(_)))
+                       .run(Sink.head[List[ProducerEvent[String]]])
+                       .someOrFailException
+          server  <- serverResource
+          client  <- clientResource
           results <- server.use { _ =>
-                      client.use { c =>
-                        for {
-                          _        <- withFastClock.fork
-                          _        <- Utils.createQueue(c, queueName)
-                          queueUrl <- Utils.getQueueUrl(c, queueName)
-                          producer = Producer.make(c, queueUrl, Serializer.serializeString, settings)
-                          results  <- producer.use(p => ZIO.foreachPar(events)(event => p.asInstanceOf[DefaultProducer[String]].produceE(event)))
-                        } yield results
-                      }
-                    }
+                       client.use { c =>
+                         for {
+                           _        <- withFastClock.fork
+                           _        <- Utils.createQueue(c, queueName)
+                           queueUrl <- Utils.getQueueUrl(c, queueName)
+                           producer  = Producer.make(c, queueUrl, Serializer.serializeString, settings)
+                           results  <- producer.use(p => ZIO.foreachPar(events)(event => p.asInstanceOf[DefaultProducer[String]].produceE(event)))
+                         } yield results
+                       }
+                     }
         } yield assert(results.size)(equalTo(events.size)) &&
           assert(results.forall(_.isRight))(isTrue)
       },
@@ -343,7 +330,7 @@ object ProducerSpec extends DefaultRunnableSpec {
 
         for {
           _            <- withFastClock.fork
-          producer     = Producer.make(client, queueUrl, Serializer.serializeString, settings)
+          producer      = Producer.make(client, queueUrl, Serializer.serializeString, settings)
           errOrResults <- producer.use(p => ZIO.foreachPar(events)(event => p.produce(event))).either
         } yield assert(errOrResults.isLeft)(isTrue)
       },
@@ -353,25 +340,25 @@ object ProducerSpec extends DefaultRunnableSpec {
         val eventCount                 = settings.batchSize * 2
 
         for {
-          events <- Util
-                     .listOfStringsN(eventCount)
-                     .sample
-                     .map(_.value.map(ProducerEvent(_)))
-                     .run(Sink.head[List[ProducerEvent[String]]])
-                     .someOrFailException
-          server <- serverResource
-          client <- clientResource
+          events  <- Util
+                       .listOfStringsN(eventCount)
+                       .sample
+                       .map(_.value.map(ProducerEvent(_)))
+                       .run(Sink.head[List[ProducerEvent[String]]])
+                       .someOrFailException
+          server  <- serverResource
+          client  <- clientResource
           results <- server.use { _ =>
-                      client.use { c =>
-                        for {
-                          _        <- withFastClock.fork
-                          _        <- Utils.createQueue(c, queueName)
-                          queueUrl <- Utils.getQueueUrl(c, queueName)
-                          producer <- Task.succeed(Producer.make(c, queueUrl, Serializer.serializeString, settings))
-                          results  <- producer.use(p => p.produceBatchE(events))
-                        } yield results
-                      }
-                    }
+                       client.use { c =>
+                         for {
+                           _        <- withFastClock.fork
+                           _        <- Utils.createQueue(c, queueName)
+                           queueUrl <- Utils.getQueueUrl(c, queueName)
+                           producer <- Task.succeed(Producer.make(c, queueUrl, Serializer.serializeString, settings))
+                           results  <- producer.use(p => p.produceBatchE(events))
+                         } yield results
+                       }
+                     }
         } yield assert(results.size)(equalTo(events.size)) &&
           assert(results.forall(_.isRight))(isTrue)
       },
@@ -384,11 +371,9 @@ object ProducerSpec extends DefaultRunnableSpec {
 
         for {
           _            <- withFastClock.fork
-          producer     = Producer.make(client, queueUrl, Serializer.serializeString, settings)
+          producer      = Producer.make(client, queueUrl, Serializer.serializeString, settings)
           errOrResults <- producer.use(p => p.produceBatch(events)).either
-        } yield {
-          assert(errOrResults.isLeft)(isTrue)
-        }
+        } yield assert(errOrResults.isLeft)(isTrue)
       },
       testM("events can be published using sendSink") {
         val queueName                  = "sendSink-" + UUID.randomUUID().toString
@@ -396,25 +381,25 @@ object ProducerSpec extends DefaultRunnableSpec {
         val eventCount                 = settings.batchSize
 
         for {
-          events <- Util
-                     .listOfStringsN(eventCount)
-                     .sample
-                     .map(_.value.map(ProducerEvent(_)))
-                     .run(Sink.head[List[ProducerEvent[String]]])
-                     .someOrFailException
-          server <- serverResource
-          client <- clientResource
+          events  <- Util
+                       .listOfStringsN(eventCount)
+                       .sample
+                       .map(_.value.map(ProducerEvent(_)))
+                       .run(Sink.head[List[ProducerEvent[String]]])
+                       .someOrFailException
+          server  <- serverResource
+          client  <- clientResource
           results <- server.use { _ =>
-                      client.use { c =>
-                        for {
-                          _        <- withFastClock.fork
-                          _        <- Utils.createQueue(c, queueName)
-                          queueUrl <- Utils.getQueueUrl(c, queueName)
-                          producer = Producer.make(c, queueUrl, Serializer.serializeString, settings)
-                          results  <- producer.use(p => Stream.succeed(events).run(p.sendSink))
-                        } yield results
-                      }
-                    }
+                       client.use { c =>
+                         for {
+                           _        <- withFastClock.fork
+                           _        <- Utils.createQueue(c, queueName)
+                           queueUrl <- Utils.getQueueUrl(c, queueName)
+                           producer  = Producer.make(c, queueUrl, Serializer.serializeString, settings)
+                           results  <- producer.use(p => Stream.succeed(events).run(p.sendSink))
+                         } yield results
+                       }
+                     }
         } yield assert(results)(equalTo(()))
       },
       testM("events that published using sendSink and generate an exception on send should fail the sink") {
@@ -434,7 +419,7 @@ object ProducerSpec extends DefaultRunnableSpec {
 
         for {
           _            <- withFastClock.fork
-          producer     = Producer.make(client, queueUrl, Serializer.serializeString, settings)
+          producer      = Producer.make(client, queueUrl, Serializer.serializeString, settings)
           errOrResults <- producer.use(p => Stream.succeed(events).run(p.sendSink)).either
         } yield assert(errOrResults.isLeft)(isTrue)
       },
@@ -447,7 +432,7 @@ object ProducerSpec extends DefaultRunnableSpec {
 
         for {
           _            <- withFastClock.fork
-          producer     = Producer.make(client, queueUrl, Serializer.serializeString, settings)
+          producer      = Producer.make(client, queueUrl, Serializer.serializeString, settings)
           errOrResults <- producer.use(p => Stream.succeed(events).run(p.sendSink)).either
         } yield assert(errOrResults.isLeft)(isTrue)
       },
@@ -483,9 +468,9 @@ object ProducerSpec extends DefaultRunnableSpec {
         }
 
         for {
-          _        <- withFastClock.fork
+          _       <- withFastClock.fork
           producer = Producer.make(client, queueUrl, Serializer.serializeString, settings)
-          results  <- producer.use(p => p.produceBatchE(events))
+          results <- producer.use(p => p.produceBatchE(events))
         } yield {
           val successes = results.filter(_.isRight).collect {
             case Right(x) => x.data
@@ -507,7 +492,7 @@ object ProducerSpec extends DefaultRunnableSpec {
         val events                     = List("A", "B", "C").map(ProducerEvent(_))
 
         val invokeCount = new AtomicInteger(0)
-        val client = new SqsAsyncClient {
+        val client      = new SqsAsyncClient {
           override def serviceName(): String = "test-sqs-async-client"
 
           override def close(): Unit = ()
@@ -535,9 +520,9 @@ object ProducerSpec extends DefaultRunnableSpec {
         }
 
         for {
-          _        <- withFastClock.fork
+          _       <- withFastClock.fork
           producer = Producer.make(client, queueUrl, Serializer.serializeString, settings)
-          results  <- producer.use(p => p.produceBatchE(events))
+          results <- producer.use(p => p.produceBatchE(events))
         } yield {
           val successes = results.filter(_.isRight).collect {
             case Right(x) => x.data
@@ -555,7 +540,7 @@ object ProducerSpec extends DefaultRunnableSpec {
         val events                     = List("A", "B", "C").map(ProducerEvent(_))
 
         val invokeCount = new AtomicInteger(0)
-        val client = new SqsAsyncClient {
+        val client      = new SqsAsyncClient {
           override def serviceName(): String = "test-sqs-async-client"
 
           override def close(): Unit = ()
@@ -579,9 +564,9 @@ object ProducerSpec extends DefaultRunnableSpec {
         }
 
         for {
-          _        <- withFastClock.fork
+          _       <- withFastClock.fork
           producer = Producer.make(client, queueUrl, Serializer.serializeString, settings)
-          results  <- producer.use(p => p.produceBatchE(events))
+          results <- producer.use(p => p.produceBatchE(events))
         } yield {
           val failures = results.filter(_.isLeft).collect {
             case Left(x) => x.event.data
@@ -599,7 +584,7 @@ object ProducerSpec extends DefaultRunnableSpec {
         val events                     = List("A").map(ProducerEvent(_))
 
         val invokeCount = new AtomicInteger(0)
-        val client = new SqsAsyncClient {
+        val client      = new SqsAsyncClient {
           override def serviceName(): String = "test-sqs-async-client"
 
           override def close(): Unit = ()
@@ -612,7 +597,7 @@ object ProducerSpec extends DefaultRunnableSpec {
 
         for {
           _            <- withFastClock.fork
-          producer     = Producer.make(client, queueUrl, Serializer.serializeString, settings)
+          producer      = Producer.make(client, queueUrl, Serializer.serializeString, settings)
           errOrResults <- producer.use(p => p.produceBatchE(events)).either
         } yield assert(errOrResults.isLeft)(isTrue)
       }
@@ -621,9 +606,10 @@ object ProducerSpec extends DefaultRunnableSpec {
   override def aspects: List[TestAspect[Nothing, TestEnvironment, Nothing, Any]] =
     List(TestAspect.executionStrategy(ExecutionStrategy.Sequential))
 
-  def queueResource(capacity: Int): Task[ZManaged[Any, Throwable, Queue[SqsRequestEntry[String]]]] = Task.succeed {
-    Queue.bounded[SqsRequestEntry[String]](capacity).toManaged(_.shutdown)
-  }
+  def queueResource(capacity: Int): Task[ZManaged[Any, Throwable, Queue[SqsRequestEntry[String]]]] =
+    Task.succeed {
+      Queue.bounded[SqsRequestEntry[String]](capacity).toManaged(_.shutdown)
+    }
 
   def withFastClock: ZIO[TestClock with Live, Nothing, Int] =
     Live.withLive(TestClock.adjust(1.seconds))(_.repeat(Schedule.spaced(10.millis)))
@@ -638,7 +624,7 @@ object ProducerSpec extends DefaultRunnableSpec {
 
     override def sendMessageBatch(sendMessageBatchRequest: SendMessageBatchRequest): CompletableFuture[SendMessageBatchResponse] = {
       val batchRequestEntries = sendMessageBatchRequest.entries().asScala
-      val errorEntries = batchRequestEntries.map { entry =>
+      val errorEntries        = batchRequestEntries.map { entry =>
         BatchResultErrorEntry.builder().id(entry.id()).code("AccessDeniedException").senderFault(false).build()
       }.toList
 

@@ -34,12 +34,12 @@ object ZioSqsSpec extends DefaultRunnableSpec {
         for {
           messages <- gen.sample.map(_.value).run(Sink.head[List[String]]).someOrFailException
           server   <- serverResource
-          list <- server.use { _ =>
-                   for {
-                     messageFromQueue <- sendAndGet(messages, settings)
-                     list             <- deleteAndGet(messageFromQueue, settings)
-                   } yield list
-                 }
+          list     <- server.use { _ =>
+                        for {
+                          messageFromQueue <- sendAndGet(messages, settings)
+                          list             <- deleteAndGet(messageFromQueue, settings)
+                        } yield list
+                      }
 
         } yield assert(list)(isEmpty)
       },
@@ -49,12 +49,12 @@ object ZioSqsSpec extends DefaultRunnableSpec {
         for {
           messages <- gen.sample.map(_.value).run(Sink.head[List[String]]).someOrFailException
           server   <- serverResource
-          list <- server.use { _ =>
-                   for {
-                     _    <- sendAndGet(messages, settings)
-                     list <- get(settings)
-                   } yield list
-                 }
+          list     <- server.use { _ =>
+                        for {
+                          _    <- sendAndGet(messages, settings)
+                          list <- get(settings)
+                        } yield list
+                      }
         } yield assert(list)(isEmpty)
       }
     )
@@ -71,39 +71,39 @@ object ZioSqsSpec extends DefaultRunnableSpec {
 
   def sendAndGet(messages: Seq[String], settings: SqsStreamSettings): ZIO[TestClock with Live with Clock, Throwable, List[Message]] =
     for {
-      _      <- withFastClock.fork
-      client <- clientResource
+      _                 <- withFastClock.fork
+      client            <- clientResource
       messagesFromQueue <- client.use { c =>
-                            for {
-                              _                 <- Utils.createQueue(c, queueName)
-                              queueUrl          <- Utils.getQueueUrl(c, queueName)
-                              producer          = Producer.make(c, queueUrl, Serializer.serializeString)
-                              _                 <- producer.use(p => ZIO.foreach(messages)(it => p.produce(ProducerEvent(it))))
-                              messagesFromQueue <- SqsStream(c, queueUrl, settings).runCollect
-                            } yield messagesFromQueue
-                          }
+                             for {
+                               _                 <- Utils.createQueue(c, queueName)
+                               queueUrl          <- Utils.getQueueUrl(c, queueName)
+                               producer           = Producer.make(c, queueUrl, Serializer.serializeString)
+                               _                 <- producer.use(p => ZIO.foreach(messages)(it => p.produce(ProducerEvent(it))))
+                               messagesFromQueue <- SqsStream(c, queueUrl, settings).runCollect
+                             } yield messagesFromQueue
+                           }
     } yield messagesFromQueue
 
   def deleteAndGet(messages: Seq[Message], settings: SqsStreamSettings): ZIO[Any, Throwable, List[Message]] =
     for {
       client <- clientResource
-      list <- client.use { c =>
-               for {
-                 queueUrl <- Utils.getQueueUrl(c, queueName)
-                 _        <- ZIO.foreach(messages)(SqsStream.deleteMessage(c, queueUrl, _))
-                 list     <- SqsStream(c, queueUrl, settings).runCollect
-               } yield { list }
-             }
+      list   <- client.use { c =>
+                  for {
+                    queueUrl <- Utils.getQueueUrl(c, queueName)
+                    _        <- ZIO.foreach(messages)(SqsStream.deleteMessage(c, queueUrl, _))
+                    list     <- SqsStream(c, queueUrl, settings).runCollect
+                  } yield list
+                }
     } yield list
 
   def get(settings: SqsStreamSettings): ZIO[Any, Throwable, List[Message]] =
     for {
       client <- clientResource
-      list <- client.use { c =>
-               for {
-                 queueUrl <- Utils.getQueueUrl(c, queueName)
-                 list     <- SqsStream(c, queueUrl, settings).runCollect
-               } yield list
-             }
+      list   <- client.use { c =>
+                  for {
+                    queueUrl <- Utils.getQueueUrl(c, queueName)
+                    list     <- SqsStream(c, queueUrl, settings).runCollect
+                  } yield list
+                }
     } yield list
 }

@@ -31,12 +31,13 @@ object ProducerError {
   /**
    * Creates a new `ProducerError` out of the result entry and the event that was published.
    */
-  def apply[T](entry: BatchResultErrorEntry, event: ProducerEvent[T]): ProducerError[T] = ProducerError(
-    senderFault = entry.senderFault(),
-    code = entry.code(),
-    message = Option(entry.message()),
-    event = event
-  )
+  def apply[T](entry: BatchResultErrorEntry, event: ProducerEvent[T]): ProducerError[T] =
+    ProducerError(
+      senderFault = entry.senderFault(),
+      code = entry.code(),
+      message = Option(entry.message()),
+      event = event
+    )
 
   /**
    * Checks whether the provided error code considered to be recoverable or not.

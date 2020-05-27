@@ -9,7 +9,7 @@ This library is a [ZIO](https://github.com/zio/zio)-powered client for AWS SQS. 
 To use `zio-sqs`, add the following line in your `build.sbt` file:
 
 ```
-libraryDependencies += "dev.zio" %% "zio-sqs" % "0.2.4"
+libraryDependencies += "dev.zio" %% "zio-sqs" % "0.2.6"
 ```
 
 ## How to use

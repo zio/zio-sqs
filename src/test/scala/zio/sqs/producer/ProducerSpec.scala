@@ -228,7 +228,8 @@ object ProducerSpec extends DefaultRunnableSpec {
                      .listOfStringsN(eventCount)
                      .sample
                      .map(_.value.map(ProducerEvent(_)))
-                     .run(Sink.await[List[ProducerEvent[String]]])
+                     .run(Sink.head[List[ProducerEvent[String]]])
+                     .someOrFailException
           server     <- serverResource
           client     <- clientResource
           retryQueue <- queueResource(16)
@@ -268,7 +269,8 @@ object ProducerSpec extends DefaultRunnableSpec {
                      .listOfStringsN(eventCount)
                      .sample
                      .map(_.value.map(ProducerEvent(_)))
-                     .run(Sink.await[List[ProducerEvent[String]]])
+                     .run(Sink.head[List[ProducerEvent[String]]])
+                     .someOrFailException
           server <- serverResource
           client <- clientResource
           results <- server.use {
@@ -314,7 +316,8 @@ object ProducerSpec extends DefaultRunnableSpec {
                      .listOfStringsN(eventCount)
                      .sample
                      .map(_.value.map(ProducerEvent(_)))
-                     .run(Sink.await[List[ProducerEvent[String]]])
+                     .run(Sink.head[List[ProducerEvent[String]]])
+                     .someOrFailException
           server <- serverResource
           client <- clientResource
           results <- server.use { _ =>
@@ -354,7 +357,8 @@ object ProducerSpec extends DefaultRunnableSpec {
                      .listOfStringsN(eventCount)
                      .sample
                      .map(_.value.map(ProducerEvent(_)))
-                     .run(Sink.await[List[ProducerEvent[String]]])
+                     .run(Sink.head[List[ProducerEvent[String]]])
+                     .someOrFailException
           server <- serverResource
           client <- clientResource
           results <- server.use { _ =>
@@ -396,7 +400,8 @@ object ProducerSpec extends DefaultRunnableSpec {
                      .listOfStringsN(eventCount)
                      .sample
                      .map(_.value.map(ProducerEvent(_)))
-                     .run(Sink.await[List[ProducerEvent[String]]])
+                     .run(Sink.head[List[ProducerEvent[String]]])
+                     .someOrFailException
           server <- serverResource
           client <- clientResource
           results <- server.use { _ =>

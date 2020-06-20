@@ -64,7 +64,7 @@ trait Producer[T] {
    * Fails if the server returns an error for any of the published events.
    * @return sink for publishing.
    */
-  def sendSink: ZSink[Any, Throwable, Iterable[ProducerEvent[T]], Unit]
+  def sendSink: ZSink[Any, Throwable, Iterable[ProducerEvent[T]], Nothing, Unit]
 
   /**
    * Publishes a batch of events.
@@ -152,7 +152,7 @@ object Producer {
     override def sendStream: Stream[Throwable, ProducerEvent[T]] => ZStream[Any, Throwable, ProducerEvent[T]] =
       es => es.mapMPar(settings.batchSize)(produce)
 
-    override def sendSink: ZSink[Any, Throwable, Iterable[ProducerEvent[T]], Unit] =
+    override def sendSink: ZSink[Any, Throwable, Iterable[ProducerEvent[T]], Nothing, Unit] =
       ZSink.drain.contramapM(es => produceBatch(es))
 
     private[sqs] def produceE(e: ProducerEvent[T]): Task[ErrorOrEvent[T]] =

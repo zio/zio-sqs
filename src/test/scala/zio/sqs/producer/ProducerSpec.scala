@@ -212,10 +212,10 @@ object ProducerSpec extends DefaultRunnableSpec {
         val settings: ProducerSettings = ProducerSettings()
         val eventCount                 = settings.batchSize
         for {
-          events     <- Util.listOfStringsN(eventCount)
+          events     <- Util.chunkOfStringsN(eventCount)
                           .sample
                           .map(_.value.map(ProducerEvent(_)))
-                          .run(Sink.head[List[ProducerEvent[String]]])
+                          .run(Sink.head[Chunk[ProducerEvent[String]]])
                           .someOrFailException
           server     <- serverResource
           client     <- clientResource
@@ -234,7 +234,7 @@ object ProducerSpec extends DefaultRunnableSpec {
                                                         done <- Promise.make[Throwable, ErrorOrEvent[String]]
                                                       } yield SqsRequestEntry[String](event, done, 0)
                                                     }
-                                      req         = Producer.buildSendMessageBatchRequest[String](queueUrl, Serializer.serializeString)(reqEntries)
+                                      req         = Producer.buildSendMessageBatchRequest[String](queueUrl, Serializer.serializeString)(reqEntries.toList)
                                       retryDelay  = 1.millisecond
                                       retryCount  = 1
                                       reqSender   = Producer.runSendMessageBatchRequest(c, q, retryDelay, retryCount) _
@@ -253,10 +253,10 @@ object ProducerSpec extends DefaultRunnableSpec {
 
         for {
           events  <- Util
-                       .listOfStringsN(eventCount)
+                       .chunkOfStringsN(eventCount)
                        .sample
                        .map(_.value.map(ProducerEvent(_)))
-                       .run(Sink.head[List[ProducerEvent[String]]])
+                       .run(Sink.head[Chunk[ProducerEvent[String]]])
                        .someOrFailException
           server  <- serverResource
           client  <- clientResource
@@ -300,10 +300,10 @@ object ProducerSpec extends DefaultRunnableSpec {
 
         for {
           events  <- Util
-                       .listOfStringsN(eventCount)
+                       .chunkOfStringsN(eventCount)
                        .sample
                        .map(_.value.map(ProducerEvent(_)))
-                       .run(Sink.head[List[ProducerEvent[String]]])
+                       .run(Sink.head[Chunk[ProducerEvent[String]]])
                        .someOrFailException
           server  <- serverResource
           client  <- clientResource
@@ -341,10 +341,10 @@ object ProducerSpec extends DefaultRunnableSpec {
 
         for {
           events  <- Util
-                       .listOfStringsN(eventCount)
+                       .chunkOfStringsN(eventCount)
                        .sample
                        .map(_.value.map(ProducerEvent(_)))
-                       .run(Sink.head[List[ProducerEvent[String]]])
+                       .run(Sink.head[Chunk[ProducerEvent[String]]])
                        .someOrFailException
           server  <- serverResource
           client  <- clientResource
@@ -382,10 +382,10 @@ object ProducerSpec extends DefaultRunnableSpec {
 
         for {
           events  <- Util
-                       .listOfStringsN(eventCount)
+                       .chunkOfStringsN(eventCount)
                        .sample
                        .map(_.value.map(ProducerEvent(_)))
-                       .run(Sink.head[List[ProducerEvent[String]]])
+                       .run(Sink.head[Chunk[ProducerEvent[String]]])
                        .someOrFailException
           server  <- serverResource
           client  <- clientResource

@@ -21,7 +21,7 @@ object ZioSqsSpec extends DefaultRunnableSpec {
         val settings: SqsStreamSettings = SqsStreamSettings(stopWhenQueueEmpty = true)
 
         for {
-          messages <- gen.sample.map(_.value).run(Sink.head[List[String]]).someOrFailException
+          messages <- gen.sample.map(_.value).run(Sink.head[Chunk[String]]).someOrFailException
           server   <- serverResource
           list     <- server.use(_ => sendAndGet(messages, settings))
 
@@ -32,7 +32,7 @@ object ZioSqsSpec extends DefaultRunnableSpec {
           SqsStreamSettings(stopWhenQueueEmpty = true, autoDelete = false, waitTimeSeconds = Some(1))
 
         for {
-          messages <- gen.sample.map(_.value).run(Sink.head[List[String]]).someOrFailException
+          messages <- gen.sample.map(_.value).run(Sink.head[Chunk[String]]).someOrFailException
           server   <- serverResource
           list     <- server.use { _ =>
                         for {
@@ -47,7 +47,7 @@ object ZioSqsSpec extends DefaultRunnableSpec {
         val settings: SqsStreamSettings = SqsStreamSettings(stopWhenQueueEmpty = true, waitTimeSeconds = Some(1))
 
         for {
-          messages <- gen.sample.map(_.value).run(Sink.head[List[String]]).someOrFailException
+          messages <- gen.sample.map(_.value).run(Sink.head[Chunk[String]]).someOrFailException
           server   <- serverResource
           list     <- server.use { _ =>
                         for {
@@ -64,12 +64,12 @@ object ZioSqsSpec extends DefaultRunnableSpec {
 
   private val queueName = "TestQueue"
 
-  val gen: Gen[Random with Sized, List[String]] = Util.listOfStringsN(10)
+  val gen: Gen[Random with Sized, Chunk[String]] = Util.chunkOfStringsN(10)
 
   def withFastClock: ZIO[TestClock with Live, Nothing, Int] =
     Live.withLive(TestClock.adjust(1.seconds))(_.repeat(Schedule.spaced(10.millis)))
 
-  def sendAndGet(messages: Seq[String], settings: SqsStreamSettings): ZIO[TestClock with Live with Clock, Throwable, List[Message]] =
+  def sendAndGet(messages: Seq[String], settings: SqsStreamSettings): ZIO[TestClock with Live with Clock, Throwable, Chunk[Message]] =
     for {
       _                 <- withFastClock.fork
       client            <- clientResource
@@ -84,7 +84,7 @@ object ZioSqsSpec extends DefaultRunnableSpec {
                            }
     } yield messagesFromQueue
 
-  def deleteAndGet(messages: Seq[Message], settings: SqsStreamSettings): ZIO[Any, Throwable, List[Message]] =
+  def deleteAndGet(messages: Seq[Message], settings: SqsStreamSettings): ZIO[Any, Throwable, Chunk[Message]] =
     for {
       client <- clientResource
       list   <- client.use { c =>
@@ -96,7 +96,7 @@ object ZioSqsSpec extends DefaultRunnableSpec {
                 }
     } yield list
 
-  def get(settings: SqsStreamSettings): ZIO[Any, Throwable, List[Message]] =
+  def get(settings: SqsStreamSettings): ZIO[Any, Throwable, Chunk[Message]] =
     for {
       client <- clientResource
       list   <- client.use { c =>

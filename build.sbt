@@ -28,7 +28,7 @@ publishTo := sonatypePublishToBundle.value
 libraryDependencies ++= Seq(
   "dev.zio"                %% "zio"                     % "1.0.0-RC21-2",
   "dev.zio"                %% "zio-streams"             % "1.0.0-RC21-2",
-  "software.amazon.awssdk"  % "sqs"                     % "2.13.58",
+  "software.amazon.awssdk"  % "sqs"                     % "2.13.59",
   "org.scala-lang.modules" %% "scala-collection-compat" % "2.1.6",
   "dev.zio"                %% "zio-test"                % "1.0.0-RC21-2" % "test",
   "dev.zio"                %% "zio-test-sbt"            % "1.0.0-RC21-2" % "test",

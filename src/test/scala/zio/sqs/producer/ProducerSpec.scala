@@ -105,7 +105,7 @@ object ProducerSpec extends DefaultRunnableSpec {
         val bodies        = rs.map(_ + 'A').map(_.toChar.toString)
         val retries       = List(1, 2, retryMaxCount, 3)
         for {
-          dones                          <- ZIO.foreach(Range(0, 4))(_ => Promise.make[Throwable, ErrorOrEvent[String]])
+          dones                          <- ZIO.foreach(Range(0, 4).toList)(_ => Promise.make[Throwable, ErrorOrEvent[String]])
           requestEntries                  = bodies.zip(dones).zip(retries).map { case ((a, b), c) => SqsRequestEntry(ProducerEvent(a), b, c) }
           m                               = ids.zip(requestEntries).toMap
           resultEntry0                    = SendMessageBatchResultEntry.builder().id("0").build()
@@ -129,7 +129,7 @@ object ProducerSpec extends DefaultRunnableSpec {
         val bodies        = rs.map(_ + 'A').map(_.toChar.toString)
         val retries       = List(1, 2, retryMaxCount, 3)
         for {
-          dones                                               <- ZIO.foreach(Range(0, 4))(_ => Promise.make[Throwable, ErrorOrEvent[String]])
+          dones                                               <- ZIO.foreach(Range(0, 4).toList)(_ => Promise.make[Throwable, ErrorOrEvent[String]])
           requestEntries                                       = bodies.zip(dones).zip(retries).map { case ((a, b), c) => SqsRequestEntry(ProducerEvent(a), b, c) }
           m                                                    = ids.zip(requestEntries).toMap
           resultEntry0                                         = SendMessageBatchResultEntry.builder().id("0").build()

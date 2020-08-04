@@ -36,7 +36,7 @@ trait Producer[T] {
    *         The returned collection contains the same items that were published.
    *         Task fails if the server returns an error for any of the provided events.
    */
-  def produceBatch(es: Iterable[ProducerEvent[T]]): Task[List[ProducerEvent[T]]]
+  def produceBatch(es: Iterable[ProducerEvent[T]]): Task[Iterable[ProducerEvent[T]]]
 
   /**
    * Stream that takes events to publish and produces a stream with published events.
@@ -75,7 +75,7 @@ trait Producer[T] {
    *         Instead, the resulting collection contains either the error for the given event or the published event itself.
    *         Task completes when all input events were processed (published to the server or failed with an error).
    */
-  def produceBatchE(es: Iterable[ProducerEvent[T]]): Task[List[ErrorOrEvent[T]]]
+  def produceBatchE(es: Iterable[ProducerEvent[T]]): Task[Iterable[ErrorOrEvent[T]]]
 
   /**
    * Stream that takes the events and produces a stream with the results.
@@ -114,10 +114,10 @@ object Producer {
       stream      = ZStream.fromQueue(failQueue)
                       .merge(ZStream.fromQueue(eventQueue))
                       .aggregateAsyncWithin(
-                        ZTransducer.collectAllN[SqsRequestEntry[T]](settings.batchSize.toLong),
+                        ZTransducer.collectAllN[SqsRequestEntry[T]](settings.batchSize),
                         Schedule.spaced(settings.duration)
                       )
-                      .map(reqBuilder)
+                      .map(chunks => reqBuilder(chunks.toList))
                       .mapMPar(settings.parallelism)(reqRunner) // TODO: replace all `mapMPar` in this file with `mapMParUnordered` when zio/zio#2547 is fixed
       _ <- stream.runDrain.toManaged_.fork
     } yield new DefaultProducer[T](eventQueue, settings)
@@ -134,7 +134,7 @@ object Producer {
     override def produce(e: ProducerEvent[T]): Task[ProducerEvent[T]] =
       produceE(e).flatMap(e => ZIO.fromEither(e))
 
-    override def produceBatchE(es: Iterable[ProducerEvent[T]]): Task[List[ErrorOrEvent[T]]] =
+    override def produceBatchE(es: Iterable[ProducerEvent[T]]): Task[Iterable[ErrorOrEvent[T]]] =
       ZIO
         .foreach(es) { e =>
           for {
@@ -143,7 +143,7 @@ object Producer {
         }
         .flatMap(es => eventQueue.offerAll(es) *> ZIO.foreachPar(es)(_.done.await))
 
-    override def produceBatch(es: Iterable[ProducerEvent[T]]): Task[List[ProducerEvent[T]]] =
+    override def produceBatch(es: Iterable[ProducerEvent[T]]): Task[Iterable[ProducerEvent[T]]] =
       produceBatchE(es).flatMap(rs => ZIO.foreach(rs)(r => ZIO.fromEither(r)))
 
     override def sendStreamE: Stream[Throwable, ProducerEvent[T]] => ZStream[Any, Throwable, ErrorOrEvent[T]] =

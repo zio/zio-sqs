@@ -66,7 +66,7 @@ object ZioSqsSpec extends DefaultRunnableSpec {
 
   val gen: Gen[Random with Sized, Chunk[String]] = Util.chunkOfStringsN(10)
 
-  def withFastClock: ZIO[TestClock with Live, Nothing, Int] =
+  def withFastClock: ZIO[TestClock with Live, Nothing, Long] =
     Live.withLive(TestClock.adjust(1.seconds))(_.repeat(Schedule.spaced(10.millis)))
 
   def sendAndGet(messages: Seq[String], settings: SqsStreamSettings): ZIO[TestClock with Live with Clock, Throwable, Chunk[Message]] =

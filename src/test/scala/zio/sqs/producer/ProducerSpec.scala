@@ -611,7 +611,7 @@ object ProducerSpec extends DefaultRunnableSpec {
       Queue.bounded[SqsRequestEntry[String]](capacity).toManaged(_.shutdown)
     }
 
-  def withFastClock: ZIO[TestClock with Live, Nothing, Int] =
+  def withFastClock: ZIO[TestClock with Live, Nothing, Long] =
     Live.withLive(TestClock.adjust(1.seconds))(_.repeat(Schedule.spaced(10.millis)))
 
   /**

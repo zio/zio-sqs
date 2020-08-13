@@ -1,5 +1,6 @@
 package zio.sqs.producer
 
+import zio.duration.Duration
 import software.amazon.awssdk.services.sqs.model.MessageAttributeValue
 
 /**
@@ -8,13 +9,15 @@ import software.amazon.awssdk.services.sqs.model.MessageAttributeValue
  * @param attributes a map of [[https://docs.aws.amazon.com/AWSSimpleQueueService/latest/SQSDeveloperGuide/sqs-message-attributes.html attributes]] to set.
  * @param groupId assigns a specific [[https://docs.aws.amazon.com/AWSSimpleQueueService/latest/SQSDeveloperGuide/using-messagegroupid-property.html message group]] to the message.
  * @param deduplicationId token used for [[https://docs.aws.amazon.com/AWSSimpleQueueService/latest/SQSDeveloperGuide/using-messagededuplicationid-property.html deduplication]] of sent messages.
+ * @param delay in order to  [[https://docs.aws.amazon.com/AWSSimpleQueueService/latest/SQSDeveloperGuide/sqs-message-timers.html delay delivery]] of the message. Allowed values: 0 to 15 minutes.
  * @tparam T type of the payload for the event.
  */
 final case class ProducerEvent[T](
   data: T,
   attributes: Map[String, MessageAttributeValue],
   groupId: Option[String],
-  deduplicationId: Option[String]
+  deduplicationId: Option[String],
+  delay: Option[Duration] = None
 )
 
 object ProducerEvent {
@@ -27,7 +30,8 @@ object ProducerEvent {
       data = body,
       attributes = Map.empty[String, MessageAttributeValue],
       groupId = None,
-      deduplicationId = None
+      deduplicationId = None,
+      delay = None
     )
 
 }

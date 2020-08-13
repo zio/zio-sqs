@@ -181,6 +181,7 @@ object Producer {
           .messageAttributes(e.event.attributes.asJava)
           .messageGroupId(e.event.groupId.orNull)
           .messageDeduplicationId(e.event.deduplicationId.orNull)
+          .delaySeconds(e.event.delay.map(_.getSeconds).getOrElse(0L).toInt)
           .build()
     }
 

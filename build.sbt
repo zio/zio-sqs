@@ -1,4 +1,4 @@
-val mainScala = "2.13.2"
+val mainScala = "2.13.3"
 val allScala  = Seq(mainScala, "2.12.10")
 
 organization := "dev.zio"
@@ -26,12 +26,12 @@ developers := List(
 publishTo := sonatypePublishToBundle.value
 
 libraryDependencies ++= Seq(
-  "dev.zio"                %% "zio"                     % "1.0.1",
-  "dev.zio"                %% "zio-streams"             % "1.0.1",
+  "dev.zio"                %% "zio"                     % "1.0.2",
+  "dev.zio"                %% "zio-streams"             % "1.0.2",
   "software.amazon.awssdk"  % "sqs"                     % "2.15.4",
   "org.scala-lang.modules" %% "scala-collection-compat" % "2.2.0",
-  "dev.zio"                %% "zio-test"                % "1.0.1"  % "test",
-  "dev.zio"                %% "zio-test-sbt"            % "1.0.1"  % "test",
+  "dev.zio"                %% "zio-test"                % "1.0.2"  % "test",
+  "dev.zio"                %% "zio-test-sbt"            % "1.0.2"  % "test",
   "org.elasticmq"          %% "elasticmq-rest-sqs"      % "0.15.6" % "test",
   "org.elasticmq"          %% "elasticmq-core"          % "0.15.6" % "test",
   compilerPlugin("org.typelevel" %% "kind-projector"     % "0.10.3"),

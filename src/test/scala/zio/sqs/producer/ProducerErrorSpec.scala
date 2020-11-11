@@ -1,6 +1,6 @@
 package zio.sqs.producer
 
-import software.amazon.awssdk.services.sqs.model.BatchResultErrorEntry
+import io.github.vigoo.zioaws.sqs.model.BatchResultErrorEntry
 import zio.ExecutionStrategy
 import zio.test.Assertion._
 import zio.test._
@@ -12,8 +12,7 @@ object ProducerErrorSpec extends DefaultRunnableSpec {
     suite("ProducerError")(
       test("it can be created from BatchResultErrorEntry") {
         val event    = ProducerEvent("e1")
-        val errEntry =
-          BatchResultErrorEntry.builder().id("id1").code("code2").message("message3").senderFault(true).build()
+        val errEntry = BatchResultErrorEntry.wrap(BatchResultErrorEntry("id1", senderFault = true, "code2", Some("message3")).buildAwsValue())
 
         val e = ProducerError(errEntry, event)
 
@@ -24,7 +23,7 @@ object ProducerErrorSpec extends DefaultRunnableSpec {
       },
       test("it can be created from BatchResultErrorEntry without message") {
         val event    = ProducerEvent("e2")
-        val errEntry = BatchResultErrorEntry.builder().id("id1").code("code2").senderFault(true).build()
+        val errEntry = BatchResultErrorEntry.wrap(BatchResultErrorEntry("id1", senderFault = true, "code2").buildAwsValue())
 
         val e = ProducerError(errEntry, event)
 

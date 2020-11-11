@@ -2,11 +2,12 @@ package zio.sqs
 
 import java.net.URI
 
+import io.github.vigoo.zioaws.core.config.AwsConfig
+import io.github.vigoo.zioaws.sqs.Sqs
 import org.elasticmq.rest.sqs.{ SQSRestServer, SQSRestServerBuilder }
 import software.amazon.awssdk.auth.credentials.{ AwsBasicCredentials, StaticCredentialsProvider }
 import software.amazon.awssdk.regions.Region
-import software.amazon.awssdk.services.sqs.SqsAsyncClient
-import zio.{ Task, UIO, ZIO, ZManaged }
+import zio.{ Task, UIO, ZIO, ZLayer, ZManaged }
 
 object ZioSqsMockServer {
   private val staticCredentialsProvider: StaticCredentialsProvider =
@@ -20,18 +21,12 @@ object ZioSqsMockServer {
     )(server => UIO.effectTotal(server.stopAndWait()))
   )
 
-  val clientResource: Task[ZManaged[Any, Throwable, SqsAsyncClient]] = ZIO.effect(
-    ZManaged.make(
-      Task {
-        SqsAsyncClient
-          .builder()
-          .region(region)
-          .credentialsProvider(
-            staticCredentialsProvider
-          )
-          .endpointOverride(uri)
-          .build()
-      }
-    )(client => UIO.effectTotal(client.close()))
-  )
+  val clientResource: ZLayer[AwsConfig, Throwable, Sqs] =
+    io.github.vigoo.zioaws.sqs.customized(
+      _.region(region)
+        .credentialsProvider(
+          staticCredentialsProvider
+        )
+        .endpointOverride(uri)
+    )
 }

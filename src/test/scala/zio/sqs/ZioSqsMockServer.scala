@@ -15,6 +15,7 @@ object ZioSqsMockServer {
   private val uri                                                  = new URI("http://localhost:9324")
   private val region: Region                                       = Region.AP_NORTHEAST_2
 
+  // TODO should probably be just a ZManaged instead of wrapped in a Task
   val serverResource: Task[ZManaged[Any, Throwable, SQSRestServer]] = ZIO.effect(
     ZManaged.make(
       Task(SQSRestServerBuilder.start())

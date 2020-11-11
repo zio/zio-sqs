@@ -1,7 +1,9 @@
 package zio.sqs
 
+import io.github.vigoo.zioaws.sqs.model._
+
 case class SqsStreamSettings(
-  attributeNames: List[String] = Nil,
+  attributeNames: List[QueueAttributeName] = Nil,
   maxNumberOfMessages: Int = 1,
   messageAttributeNames: List[String] = Nil,
   visibilityTimeout: Option[Int] = Some(30),

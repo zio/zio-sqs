@@ -1,7 +1,7 @@
 package zio.sqs.producer
 
+import io.github.vigoo.zioaws.sqs.model.MessageAttributeValue
 import zio.duration.Duration
-import software.amazon.awssdk.services.sqs.model.MessageAttributeValue
 
 /**
  * Event to publish to SPS.

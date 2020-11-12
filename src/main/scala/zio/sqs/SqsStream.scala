@@ -14,12 +14,12 @@ object SqsStream {
   ): ZStream[Sqs, Throwable, Message.ReadOnly] = {
 
     val request = ReceiveMessageRequest(
-      queueUrl,
-      Some(settings.attributeNames),
-      Some(settings.messageAttributeNames),
-      Some(settings.maxNumberOfMessages),
-      settings.visibilityTimeout.map(_.toInt),
-      settings.waitTimeSeconds.map(_.toInt)
+      queueUrl = queueUrl,
+      attributeNames = Some(settings.attributeNames),
+      messageAttributeNames = Some(settings.messageAttributeNames),
+      maxNumberOfMessages = Some(settings.maxNumberOfMessages),
+      visibilityTimeout = settings.visibilityTimeout.map(_.toInt),
+      waitTimeSeconds = settings.waitTimeSeconds.map(_.toInt)
     )
 
     ZStream

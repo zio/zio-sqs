@@ -4,6 +4,7 @@ import java.net.URI
 
 import io.github.vigoo.zioaws.core.config.AwsConfig
 import io.github.vigoo.zioaws.sqs.Sqs
+import io.github.vigoo.zioaws
 import org.elasticmq.rest.sqs.{ SQSRestServer, SQSRestServerBuilder }
 import software.amazon.awssdk.auth.credentials.{ AwsBasicCredentials, StaticCredentialsProvider }
 import software.amazon.awssdk.regions.Region
@@ -23,7 +24,7 @@ object ZioSqsMockServer {
   )
 
   val clientResource: ZLayer[AwsConfig, Throwable, Sqs] =
-    io.github.vigoo.zioaws.sqs.customized(
+    zioaws.sqs.customized(
       _.region(region)
         .credentialsProvider(
           staticCredentialsProvider

@@ -1,5 +1,6 @@
 package zio.sqs.producer
 
+import io.github.vigoo.zioaws
 import io.github.vigoo.zioaws.sqs.Sqs
 import io.github.vigoo.zioaws.sqs.model._
 import zio._
@@ -171,13 +172,13 @@ object Producer {
     val reqEntries = entries.zipWithIndex.map {
       case (e: SqsRequestEntry[T], index: Int) =>
         SendMessageBatchRequestEntry(
-          index.toString,
-          serializer(e.event.data),
-          e.event.delay.map(_.getSeconds.toInt),
-          Some(e.event.attributes),
-          None,
-          e.event.deduplicationId,
-          e.event.groupId
+          id = index.toString,
+          messageBody = serializer(e.event.data),
+          delaySeconds = e.event.delay.map(_.getSeconds.toInt),
+          messageAttributes = Some(e.event.attributes),
+          messageSystemAttributes = None,
+          messageDeduplicationId = e.event.deduplicationId,
+          messageGroupId = e.event.groupId
         )
     }
 
@@ -198,7 +199,7 @@ object Producer {
   private[sqs] def runSendMessageBatchRequest[R, T](failedQueue: Queue[SqsRequestEntry[T]], retryDelay: Duration, retryMaxCount: Int)(
     req: SqsRequest[T]
   ): RIO[R with Clock with Sqs, Unit] =
-    io.github.vigoo.zioaws.sqs
+    zioaws.sqs
       .sendMessageBatch(req.inner)
       .mapError(_.toThrowable)
       .flatMap { res =>

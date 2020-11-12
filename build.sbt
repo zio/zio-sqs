@@ -25,14 +25,13 @@ developers := List(
 
 publishTo := sonatypePublishToBundle.value
 
-val zioAwsVersion = "3.15.19.7"
+val zioAwsVersion = "3.15.19.9"
 
 libraryDependencies ++= Seq(
   "dev.zio"                %% "zio"                     % "1.0.3",
   "dev.zio"                %% "zio-streams"             % "1.0.3",
   "io.github.vigoo"        %% "zio-aws-sqs"             % zioAwsVersion,
   "io.github.vigoo"        %% "zio-aws-netty"           % zioAwsVersion,
-  "software.amazon.awssdk"  % "sqs"                     % "2.15.26", // TODO remove
   "org.scala-lang.modules" %% "scala-collection-compat" % "2.2.0",
   "dev.zio"                %% "zio-test"                % "1.0.3"  % "test",
   "dev.zio"                %% "zio-test-sbt"            % "1.0.3"  % "test",

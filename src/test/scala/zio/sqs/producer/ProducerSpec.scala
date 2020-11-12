@@ -77,7 +77,7 @@ object ProducerSpec extends DefaultRunnableSpec {
       },
       testM("SqsResponseErrorEntry can be created") {
         val event    = ProducerEvent("e1")
-        val errEntry = BatchResultErrorEntry("id1", true, "code2", Some("message3"))
+        val errEntry = BatchResultErrorEntry(id = "id1", senderFault = true, code = "code2", message = Some("message3"))
 
         val eventError = ProducerError(errEntry, event)
 
@@ -99,10 +99,10 @@ object ProducerSpec extends DefaultRunnableSpec {
           requestEntries                  = bodies.zip(dones).zip(retries).map { case ((a, b), c) => SqsRequestEntry(ProducerEvent(a), b, c) }
           m                               = ids.zip(requestEntries).toMap
           resultEntry0                    = SendMessageBatchResultEntry("0", "", "")
-          errorEntry1                     = BatchResultErrorEntry("1", false, "ServiceUnavailable")
-          errorEntry2                     = BatchResultErrorEntry("2", false, "ThrottlingException")
-          errorEntry3                     = BatchResultErrorEntry("3", false, "AccessDeniedException")
-          res                             = SendMessageBatchResponse(Seq(resultEntry0), Seq(errorEntry1, errorEntry2, errorEntry3))
+          errorEntry1                     = BatchResultErrorEntry(id = "1", senderFault = false, code = "ServiceUnavailable")
+          errorEntry2                     = BatchResultErrorEntry(id = "2", senderFault = false, code = "ThrottlingException")
+          errorEntry3                     = BatchResultErrorEntry(id = "3", senderFault = false, code = "AccessDeniedException")
+          res                             = SendMessageBatchResponse(successful = Seq(resultEntry0), failed = Seq(errorEntry1, errorEntry2, errorEntry3))
           partitioner                     = Producer.partitionResponse(m, retryMaxCount) _
           (successful, retryable, errors) = partitioner(res)
         } yield assert(successful.size)(equalTo(1)) &&
@@ -121,10 +121,10 @@ object ProducerSpec extends DefaultRunnableSpec {
           m              = ids.zip(requestEntries).toMap
 
           resultEntry0                                         = SendMessageBatchResultEntry("0", "", "")
-          errorEntry1                                          = BatchResultErrorEntry("1", false, "ServiceUnavailable")
-          errorEntry2                                          = BatchResultErrorEntry("2", false, "ThrottlingException")
-          errorEntry3                                          = BatchResultErrorEntry("3", false, "AccessDeniedException")
-          res                                                  = SendMessageBatchResponse(Seq(resultEntry0), Seq(errorEntry1, errorEntry2, errorEntry3))
+          errorEntry1                                          = BatchResultErrorEntry(id = "1", senderFault = false, code = "ServiceUnavailable")
+          errorEntry2                                          = BatchResultErrorEntry(id = "2", senderFault = false, code = "ThrottlingException")
+          errorEntry3                                          = BatchResultErrorEntry(id = "3", senderFault = false, code = "AccessDeniedException")
+          res                                                  = SendMessageBatchResponse(successful = Seq(resultEntry0), failed = Seq(errorEntry1, errorEntry2, errorEntry3))
           partitioner                                          = Producer.partitionResponse(m, retryMaxCount) _
           (successful, retryable, errors)                      = partitioner(res)
           mapper                                               = Producer.mapResponse(m) _
@@ -429,13 +429,13 @@ object ProducerSpec extends DefaultRunnableSpec {
               val batchRequestEntries                                       = request.entries
               val (batchRequestEntriesToSucceed, batchRequestEntriesToFail) = batchRequestEntries.partition(_.messageBody == "A")
 
-              val resultEntries = batchRequestEntriesToSucceed.map(entry => SendMessageBatchResultEntry(entry.id, "", ""))
+              val resultEntries = batchRequestEntriesToSucceed.map(entry => SendMessageBatchResultEntry(id = entry.id, messageId = "", md5OfMessageBody = ""))
 
               val errorEntries = batchRequestEntriesToFail.map { entry =>
-                BatchResultErrorEntry(entry.id, false, "AccessDeniedException")
+                BatchResultErrorEntry(id = entry.id, senderFault = false, code = "AccessDeniedException")
               }.toList
 
-              val res = SendMessageBatchResponse(resultEntries, errorEntries)
+              val res = SendMessageBatchResponse(successful = resultEntries, failed = errorEntries)
               IO.succeed(res)
             }
           }
@@ -480,7 +480,7 @@ object ProducerSpec extends DefaultRunnableSpec {
                 val resultEntries = batchRequestEntriesToSucceed.map(entry => SendMessageBatchResultEntry(entry.id, "", ""))
 
                 val errorEntries = batchRequestEntriesToFail.map { entry =>
-                  BatchResultErrorEntry(entry.id, false, "ServiceUnavailable")
+                  BatchResultErrorEntry(id = entry.id, senderFault = false, code = "ServiceUnavailable")
                 }.toList
 
                 SendMessageBatchResponse(resultEntries, errorEntries)
@@ -519,11 +519,11 @@ object ProducerSpec extends DefaultRunnableSpec {
                 invokeCount.addAndGet(batchRequestEntriesToFail.size)
 
                 val errorEntries = batchRequestEntriesToFail.map { entry =>
-                  BatchResultErrorEntry(entry.id, false, "ServiceUnavailable")
+                  BatchResultErrorEntry(id = entry.id, senderFault = false, code = "ServiceUnavailable")
                 }.toList
 
                 sendMessageBatchResponseAsReadOnly(
-                  SendMessageBatchResponse(Seq.empty, errorEntries)
+                  SendMessageBatchResponse(successful = Seq.empty, failed = errorEntries)
                 )
               }
           }
@@ -586,10 +586,10 @@ object ProducerSpec extends DefaultRunnableSpec {
         ZIO.succeed {
           val batchRequestEntries = request.entries
           val errorEntries        = batchRequestEntries.map { entry =>
-            BatchResultErrorEntry(entry.id, false, "AccessDeniedException")
+            BatchResultErrorEntry(id = entry.id, senderFault = false, code = "AccessDeniedException")
           }.toList
 
-          SendMessageBatchResponse(Seq.empty, errorEntries)
+          SendMessageBatchResponse(successful = Seq.empty, failed = errorEntries)
         }
     }
   }

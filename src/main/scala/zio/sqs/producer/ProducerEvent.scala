@@ -4,7 +4,7 @@ import io.github.vigoo.zioaws.sqs.model.MessageAttributeValue
 import zio.duration.Duration
 
 /**
- * Event to publish to SPS.
+ * Event to publish to SQS.
  * @param data payload to publish.
  * @param attributes a map of [[https://docs.aws.amazon.com/AWSSimpleQueueService/latest/SQSDeveloperGuide/sqs-message-attributes.html attributes]] to set.
  * @param groupId assigns a specific [[https://docs.aws.amazon.com/AWSSimpleQueueService/latest/SQSDeveloperGuide/using-messagegroupid-property.html message group]] to the message.

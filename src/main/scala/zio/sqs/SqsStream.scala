@@ -18,8 +18,8 @@ object SqsStream {
       attributeNames = Some(settings.attributeNames),
       messageAttributeNames = Some(settings.messageAttributeNames),
       maxNumberOfMessages = Some(settings.maxNumberOfMessages),
-      visibilityTimeout = settings.visibilityTimeout.map(_.toInt),
-      waitTimeSeconds = settings.waitTimeSeconds.map(_.toInt)
+      visibilityTimeout = settings.visibilityTimeout,
+      waitTimeSeconds = settings.waitTimeSeconds
     )
 
     ZStream

@@ -2,7 +2,7 @@
 
 [![CircleCI](https://circleci.com/gh/zio/zio-sqs/tree/master.svg?style=svg)](https://circleci.com/gh/zio/zio-sqs/tree/master)
 
-This library is a [ZIO](https://github.com/zio/zio)-powered client for AWS SQS. It is built on top of the [AWS SDK for Java 2.0](https://docs.aws.amazon.com/sdk-for-java/v2/developer-guide/basics.html).
+This library is a [ZIO](https://github.com/zio/zio)-powered client for AWS SQS. It is built on top of the [AWS SDK for Java 2.0](https://docs.aws.amazon.com/sdk-for-java/v2/developer-guide/basics.html) via the automatically generated wrappers from [zio-aws](https://github.com/vigoo/zio-aws).
 
 ## Add the dependency
 
@@ -14,7 +14,7 @@ libraryDependencies += "dev.zio" %% "zio-sqs" % "0.3.2"
 
 ## How to use
 
-In order to use the connector, you need a `SqsAsyncClient`. Refer to the [AWS SDK Documentation](https://docs.aws.amazon.com/sdk-for-java/v2/developer-guide/creating-clients.html) if you need help.
+In order to use the connector, you need to provide your program with a configured SQS client as an `Sqs` ZLayer. You can use `io.github.vigoo.zioaws.sqs.live` to use default AWS SDK settings or use `.customized` (refer to the [AWS SDK Documentation](https://docs.aws.amazon.com/sdk-for-java/v2/developer-guide/creating-clients.html) if you need help customizing it). See also the [ZIO documentation](https://zio.dev/docs/howto/howto_use_layers) on how to use layers.
 
 ### Publish messages
 
@@ -22,16 +22,14 @@ Use `Producer.make` to instantiate an instance of [Producer](src/main/scala/zio/
 
 ```scala
 def make[R, T](
-    client: SqsAsyncClient,
     queueUrl: String,
     serializer: Serializer[T],
     settings: ProducerSettings = ProducerSettings()
-  ): ZManaged[R with Clock, Throwable, Producer[T]]
+  ): ZManaged[R with Sqs with Clock, Throwable, Producer[T]]
 ```
 
 where:
 
-- `client: SqsAsyncClient` - an instance of [SqsAsyncClient](https://sdk.amazonaws.com/java/api/latest/software/amazon/awssdk/services/sqs/SqsAsyncClient.html)
 - `queueUrl: String` - an SQS queue URL
 - `serializer: Serializer[T]` - a instance of [zio.sqs.serialization.Serializer](src/main/scala/zio/sqs/serialization/Serializer.scala) that can be used to convert an object of type `T` to a string.
   ```scala
@@ -95,22 +93,34 @@ val event: ProducerEvent = ProducerEvent(str)
 #### Publish Example
 
 ```scala
-    val events = List("message1", "message2").map(ProducerEvent(_))
-    val queueName = "TestQueue"
-    for {
-      client <- Task {
-                 SqsAsyncClient
-                   .builder()
-                   .region(Region.of("ap-northeast-2"))
-                   .credentialsProvider(
-                     StaticCredentialsProvider.create(AwsBasicCredentials.create("key", "key"))
-                   )
-                   .build()
-               }
-      queueUrl    <- Utils.getQueueUrl(client, queueName)
-      producer    = Producer.make(client, queueUrl, Serializer.serializeString)
-      errOrResult <- producer.use { p => p.sendStream(Stream(events: _*)).runDrain.either }
-    } yield errOrResult
+import io.github.vigoo.zioaws
+import io.github.vigoo.zioaws.sqs.Sqs
+import software.amazon.awssdk.auth.credentials._
+import software.amazon.awssdk.regions.Region
+import zio.ZLayer
+import zio.sqs._
+import zio.sqs.producer._
+import zio.sqs.serialization._
+import zio.stream._
+
+val client: ZLayer[Any, Throwable, Sqs] = zioaws.netty.default >>>
+  zioaws.core.config.default >>>
+  zioaws.sqs.customized(builder =>
+    builder
+      .region(Region.of("ap-northeast-2"))
+      .credentialsProvider(
+        StaticCredentialsProvider.create(AwsBasicCredentials.create("key", "key"))
+      )
+  )
+val events                              = List("message1", "message2").map(ProducerEvent(_))
+val queueName                           = "TestQueue"
+val program                             = for {
+  queueUrl    <- Utils.getQueueUrl(queueName)
+  producer     = Producer.make(queueUrl, Serializer.serializeString)
+  errOrResult <- producer.use(p => p.sendStream(ZStream(events: _*)).runDrain.either)
+} yield errOrResult
+
+program.provideCustomLayer(client)
 ```
 
 ### Consume messages
@@ -119,10 +129,9 @@ Use `SqsStream.apply` to get a stream of messages from a queue. It returns a ZIO
 
 ```scala
 def apply(
-  client: SqsAsyncClient,
   queueUrl: String,
   settings: SqsStreamSettings = SqsStreamSettings()
-): Stream[Throwable, Message]
+): ZStream[Sqs, Throwable, Message]
 ```
 
 `SqsStreamSettings` allows your to configure a number of things:
@@ -141,66 +150,40 @@ def apply(
 import zio.sqs.{SqsStream, SqsStreamSettings}
 
 SqsStream(
-  client,
   queueUrl,
   SqsStreamSettings(stopWhenQueueEmpty = true, waitTimeSeconds = Some(3))
 ).foreach(msg => UIO(println(msg.body)))
 ```
 
-### Helpers
-
-The `zio.sqs.Utils` object provides a couple helpful functions to create a queue and find a queue URL from its name.
-
-```scala
-def createQueue(
-  client: SqsAsyncClient,
-  name: String,
-  attributes: Map[QueueAttributeName, String] = Map()
-): Task[Unit]
-
-def getQueueUrl(
-  client: SqsAsyncClient,
-  name: String
-): Task[String]
-```
-
 ### Full example
 
 ```scala
-import software.amazon.awssdk.auth.credentials.{ AwsBasicCredentials, StaticCredentialsProvider }
-import software.amazon.awssdk.regions.Region
-import software.amazon.awssdk.services.sqs.SqsAsyncClient
+import io.github.vigoo.zioaws
+import io.github.vigoo.zioaws.sqs.Sqs
 import zio.sqs.producer.{ Producer, ProducerEvent }
 import zio.sqs.serialization.Serializer
 import zio.sqs.{ SqsStream, SqsStreamSettings, Utils }
-import zio.{ App, IO, Task, UIO, ZEnv, ZIO }
+import zio.{ ExitCode, UIO, URIO, ZLayer }
 
-object TestApp extends App {
+object TestApp extends zio.App {
+  val queueName = "TestQueue"
 
-  override def run(args: List[String]): ZIO[ZEnv, Nothing, Int] =
+  val client: ZLayer[Any, Throwable, Sqs] = zioaws.netty.default >>>
+    zioaws.core.config.default >>>
+    zioaws.sqs.live
+
+  override def run(args: List[String]): URIO[zio.ZEnv, ExitCode] =
     (for {
-      client <- Task {
-                 SqsAsyncClient
-                   .builder()
-                   .region(Region.of("ap-northeast-2"))
-                   .credentialsProvider(
-                     StaticCredentialsProvider
-                       .create(AwsBasicCredentials.create("key", "key"))
-                   )
-                   .build()
-               }
-      queueName = "TestQueue"
-      _         <- Utils.createQueue(client, queueName)
-      queueUrl  <- Utils.getQueueUrl(client, queueName)
-      producer  = Producer.make(client, queueUrl, Serializer.serializeString)
-      _ <- producer.use { p =>
-            p.produce(ProducerEvent("hello"))
-          }
-      _ <- SqsStream(
-            client,
-            queueUrl,
-            SqsStreamSettings(stopWhenQueueEmpty = true, waitTimeSeconds = Some(3))
-          ).foreach(msg => UIO(println(msg.body)))
-    } yield 0).foldM(e => UIO(println(e.toString)).as(1), IO.succeed)
+      _        <- Utils.createQueue(queueName)
+      queueUrl <- Utils.getQueueUrl(queueName)
+      producer  = Producer.make(queueUrl, Serializer.serializeString)
+      _        <- producer.use { p =>
+                    p.produce(ProducerEvent("hello"))
+                  }
+      _        <- SqsStream(
+                    queueUrl,
+                    SqsStreamSettings(stopWhenQueueEmpty = true, waitTimeSeconds = Some(3))
+                  ).foreach(msg => UIO(println(msg.body)))
+    } yield 0).provideCustomLayer(client).exitCode
 }
 ```

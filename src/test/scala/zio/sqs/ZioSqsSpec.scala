@@ -1,8 +1,8 @@
 package zio.sqs
 
-import io.github.vigoo.zioaws.sqs.Sqs
 import io.github.vigoo.zioaws
-import io.github.vigoo.zioaws.sqs.model.{ CreateQueueRequest, GetQueueUrlRequest, Message }
+import io.github.vigoo.zioaws.sqs.Sqs
+import io.github.vigoo.zioaws.sqs.model.Message
 import zio._
 import zio.clock.Clock
 import zio.duration._
@@ -74,10 +74,8 @@ object ZioSqsSpec extends DefaultRunnableSpec {
   def sendAndGet(messages: Seq[String], settings: SqsStreamSettings): ZIO[TestClock with Live with Clock with Sqs, Throwable, Chunk[Message.ReadOnly]] =
     for {
       _                 <- withFastClock.fork
-      _                 <- zioaws.sqs.createQueue(CreateQueueRequest(queueName)).mapError(_.toThrowable)
-      queueUrl          <- zioaws.sqs.getQueueUrl(GetQueueUrlRequest(queueName))
-                             .mapError(_.toThrowable)
-                             .map(_.queueUrlValue.getOrElse(""))
+      _                 <- Utils.createQueue(queueName)
+      queueUrl          <- Utils.getQueueUrl(queueName)
       producer           = Producer.make(queueUrl, Serializer.serializeString)
       _                 <- producer.use(p => ZIO.foreach(messages)(it => p.produce(ProducerEvent(it))))
       messagesFromQueue <- SqsStream(queueUrl, settings).runCollect
@@ -85,20 +83,14 @@ object ZioSqsSpec extends DefaultRunnableSpec {
 
   def deleteAndGet(messages: Seq[Message.ReadOnly], settings: SqsStreamSettings): ZIO[Sqs, Throwable, Chunk[Message.ReadOnly]] =
     for {
-      queueUrl <- zioaws.sqs
-                    .getQueueUrl(GetQueueUrlRequest(queueName))
-                    .mapError(_.toThrowable)
-                    .map(_.queueUrlValue.getOrElse(""))
+      queueUrl <- Utils.getQueueUrl(queueName)
       _        <- ZIO.foreach_(messages)(SqsStream.deleteMessage(queueUrl, _))
       list     <- SqsStream(queueUrl, settings).runCollect
     } yield list
 
   def get(settings: SqsStreamSettings): ZIO[Sqs, Throwable, Chunk[Message.ReadOnly]] =
     for {
-      queueUrl <- zioaws.sqs
-                    .getQueueUrl(GetQueueUrlRequest(queueName))
-                    .mapError(_.toThrowable)
-                    .map(_.queueUrlValue.getOrElse(""))
+      queueUrl <- Utils.getQueueUrl(queueName)
       list     <- SqsStream(queueUrl, settings).runCollect
     } yield list
 }

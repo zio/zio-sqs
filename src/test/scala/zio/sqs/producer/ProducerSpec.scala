@@ -4,14 +4,13 @@ import java.util.UUID
 import java.util.concurrent.atomic.AtomicInteger
 
 import scala.language.implicitConversions
-
 import io.github.vigoo.zioaws
 import io.github.vigoo.zioaws.core.{ aspects, AwsError }
 import io.github.vigoo.zioaws.sqs.model._
 import io.github.vigoo.zioaws.sqs.{ model, Sqs }
 import software.amazon.awssdk.services.sqs.SqsAsyncClient
 import zio.duration._
-import zio.sqs.Util
+import zio.sqs.{ Util, Utils }
 import zio.sqs.ZioSqsMockServer._
 import zio.sqs.producer.Producer.{ DefaultProducer, SqsRequest, SqsRequestEntry, SqsResponseErrorEntry }
 import zio.sqs.serialization.Serializer
@@ -204,11 +203,8 @@ object ProducerSpec extends DefaultRunnableSpec {
                           retryQueue.use {
                             q =>
                               for {
-                                _          <- zioaws.sqs.createQueue(CreateQueueRequest(queueName)).mapError(_.toThrowable)
-                                queueUrl   <- zioaws.sqs
-                                                .getQueueUrl(GetQueueUrlRequest(queueName))
-                                                .mapError(_.toThrowable)
-                                                .map(_.queueUrlValue.getOrElse(""))
+                                _          <- Utils.createQueue(queueName)
+                                queueUrl   <- Utils.getQueueUrl(queueName)
                                 reqEntries <- ZIO.foreach(events) { event =>
                                                 for {
                                                   done <- Promise.make[Throwable, ErrorOrEvent[String]]
@@ -241,11 +237,8 @@ object ProducerSpec extends DefaultRunnableSpec {
           results <- server.use_ {
                        for {
                          _           <- withFastClock.fork
-                         _           <- zioaws.sqs.createQueue(CreateQueueRequest(queueName)).mapError(_.toThrowable)
-                         queueUrl    <- zioaws.sqs
-                                          .getQueueUrl(GetQueueUrlRequest(queueName))
-                                          .mapError(_.toThrowable)
-                                          .map(_.queueUrlValue.getOrElse(""))
+                         _           <- Utils.createQueue(queueName)
+                         queueUrl    <- Utils.getQueueUrl(queueName)
                          producer     = Producer.make(queueUrl, Serializer.serializeString, settings)
                          resultQueue <- Queue.unbounded[ErrorOrEvent[String]]
                          _           <- producer.use { p =>
@@ -287,11 +280,8 @@ object ProducerSpec extends DefaultRunnableSpec {
           results <- server.use_ {
                        for {
                          _        <- withFastClock.fork
-                         _        <- zioaws.sqs.createQueue(CreateQueueRequest(queueName)).mapError(_.toThrowable)
-                         queueUrl <- zioaws.sqs
-                                       .getQueueUrl(GetQueueUrlRequest(queueName))
-                                       .mapError(_.toThrowable)
-                                       .map(_.queueUrlValue.getOrElse(""))
+                         _        <- Utils.createQueue(queueName)
+                         queueUrl <- Utils.getQueueUrl(queueName)
                          producer  = Producer.make(queueUrl, Serializer.serializeString, settings)
                          results  <- producer.use(p => ZIO.foreachPar(events)(event => p.asInstanceOf[DefaultProducer[String]].produceE(event)))
                        } yield results
@@ -328,11 +318,8 @@ object ProducerSpec extends DefaultRunnableSpec {
           results <- server.use_ {
                        for {
                          _        <- withFastClock.fork
-                         _        <- zioaws.sqs.createQueue(CreateQueueRequest(queueName)).mapError(_.toThrowable)
-                         queueUrl <- zioaws.sqs
-                                       .getQueueUrl(GetQueueUrlRequest(queueName))
-                                       .mapError(_.toThrowable)
-                                       .map(_.queueUrlValue.getOrElse(""))
+                         _        <- Utils.createQueue(queueName)
+                         queueUrl <- Utils.getQueueUrl(queueName)
                          producer <- Task.succeed(Producer.make(queueUrl, Serializer.serializeString, settings))
                          results  <- producer.use(p => p.produceBatchE(events))
                        } yield results
@@ -369,11 +356,8 @@ object ProducerSpec extends DefaultRunnableSpec {
           results <- server.use_ {
                        for {
                          _        <- withFastClock.fork
-                         _        <- zioaws.sqs.createQueue(CreateQueueRequest(queueName)).mapError(_.toThrowable)
-                         queueUrl <- zioaws.sqs
-                                       .getQueueUrl(GetQueueUrlRequest(queueName))
-                                       .mapError(_.toThrowable)
-                                       .map(_.queueUrlValue.getOrElse(""))
+                         _        <- Utils.createQueue(queueName)
+                         queueUrl <- Utils.getQueueUrl(queueName)
                          producer  = Producer.make(queueUrl, Serializer.serializeString, settings)
                          results  <- producer.use(p => Stream.succeed(events).run(p.sendSink))
                        } yield results

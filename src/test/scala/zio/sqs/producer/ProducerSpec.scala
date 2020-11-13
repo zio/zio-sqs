@@ -63,9 +63,9 @@ object ProducerSpec extends DefaultRunnableSpec {
           deduplicationId = Some("d1")
         )
 
-        val batchRequestEntry = SendMessageBatchRequestEntry("1", "{}")
+        val batchRequestEntry = SendMessageBatchRequestEntry(id = "1", messageBody = "{}")
 
-        val batchReq = SendMessageBatchRequest("queueUrl", List(batchRequestEntry))
+        val batchReq = SendMessageBatchRequest(queueUrl = "queueUrl", entries = List(batchRequestEntry))
 
         for {
           done        <- Promise.make[Throwable, ErrorOrEvent[String]]

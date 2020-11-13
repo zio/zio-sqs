@@ -1,33 +1,28 @@
 package examples
 
-object PublishExample {
+import io.github.vigoo.zioaws
+import io.github.vigoo.zioaws.sqs.Sqs
+import zio.clock.Clock
+import zio.{ ExitCode, URIO, ZIO, ZLayer }
+import zio.sqs._
+import zio.sqs.producer._
+import zio.sqs.serialization._
+import zio.stream._
 
-  import io.github.vigoo.zioaws
-  import io.github.vigoo.zioaws.sqs.Sqs
-  import software.amazon.awssdk.auth.credentials._
-  import software.amazon.awssdk.regions.Region
-  import zio.ZLayer
-  import zio.sqs._
-  import zio.sqs.producer._
-  import zio.sqs.serialization._
-  import zio.stream._
+object PublishExample extends zio.App {
 
   val client: ZLayer[Any, Throwable, Sqs] = zioaws.netty.default >>>
     zioaws.core.config.default >>>
-    zioaws.sqs.customized(builder =>
-      builder
-        .region(Region.of("ap-northeast-2"))
-        .credentialsProvider(
-          StaticCredentialsProvider.create(AwsBasicCredentials.create("key", "key"))
-        )
-    )
-  val events                              = List("message1", "message2").map(ProducerEvent(_))
-  val queueName                           = "TestQueue"
-  val program                             = for {
+    zioaws.sqs.live
+
+  val events                                                                    = List("message1", "message2").map(ProducerEvent(_))
+  val queueName                                                                 = "TestQueue"
+  val program: ZIO[Any with Clock with Sqs, Throwable, Either[Throwable, Unit]] = for {
     queueUrl    <- Utils.getQueueUrl(queueName)
     producer     = Producer.make(queueUrl, Serializer.serializeString)
     errOrResult <- producer.use(p => p.sendStream(ZStream(events: _*)).runDrain.either)
   } yield errOrResult
 
-  program.provideCustomLayer(client)
+  override def run(args: List[String]): URIO[zio.ZEnv, ExitCode] =
+    program.provideCustomLayer(client).exitCode
 }

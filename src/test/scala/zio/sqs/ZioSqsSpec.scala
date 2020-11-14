@@ -24,8 +24,7 @@ object ZioSqsSpec extends DefaultRunnableSpec {
 
         for {
           messages <- gen.sample.map(_.value).run(Sink.head[Chunk[String]]).someOrFailException
-          server   <- serverResource
-          list     <- server.use(_ => sendAndGet(messages, settings))
+          list     <- serverResource.use(_ => sendAndGet(messages, settings))
 
         } yield assert(list.map(_.bodyValue.getOrElse("")))(equalTo(messages))
       },
@@ -35,8 +34,7 @@ object ZioSqsSpec extends DefaultRunnableSpec {
 
         for {
           messages <- gen.sample.map(_.value).run(Sink.head[Chunk[String]]).someOrFailException
-          server   <- serverResource
-          list     <- server.use { _ =>
+          list     <- serverResource.use { _ =>
                         for {
                           messageFromQueue <- sendAndGet(messages, settings)
                           list             <- deleteAndGet(messageFromQueue, settings)
@@ -50,8 +48,7 @@ object ZioSqsSpec extends DefaultRunnableSpec {
 
         for {
           messages <- gen.sample.map(_.value).run(Sink.head[Chunk[String]]).someOrFailException
-          server   <- serverResource
-          list     <- server.use { _ =>
+          list     <- serverResource.use { _ =>
                         for {
                           _    <- sendAndGet(messages, settings)
                           list <- get(settings)

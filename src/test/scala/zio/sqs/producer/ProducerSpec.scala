@@ -197,9 +197,8 @@ object ProducerSpec extends DefaultRunnableSpec {
                           .map(_.value.map(ProducerEvent(_)))
                           .run(Sink.head[Chunk[ProducerEvent[String]]])
                           .someOrFailException
-          server     <- serverResource
           retryQueue <- queueResource(16)
-          dones      <- server.use_ {
+          dones      <- serverResource.use_ {
                           retryQueue.use {
                             q =>
                               for {
@@ -233,8 +232,7 @@ object ProducerSpec extends DefaultRunnableSpec {
                        .map(_.value.map(ProducerEvent(_)))
                        .run(Sink.head[Chunk[ProducerEvent[String]]])
                        .someOrFailException
-          server  <- serverResource
-          results <- server.use_ {
+          results <- serverResource.use_ {
                        for {
                          _           <- withFastClock.fork
                          _           <- Utils.createQueue(queueName)
@@ -276,8 +274,7 @@ object ProducerSpec extends DefaultRunnableSpec {
                        .map(_.value.map(ProducerEvent(_)))
                        .run(Sink.head[Chunk[ProducerEvent[String]]])
                        .someOrFailException
-          server  <- serverResource
-          results <- server.use_ {
+          results <- serverResource.use_ {
                        for {
                          _        <- withFastClock.fork
                          _        <- Utils.createQueue(queueName)
@@ -314,8 +311,7 @@ object ProducerSpec extends DefaultRunnableSpec {
                        .map(_.value.map(ProducerEvent(_)))
                        .run(Sink.head[Chunk[ProducerEvent[String]]])
                        .someOrFailException
-          server  <- serverResource
-          results <- server.use_ {
+          results <- serverResource.use_ {
                        for {
                          _        <- withFastClock.fork
                          _        <- Utils.createQueue(queueName)
@@ -352,8 +348,7 @@ object ProducerSpec extends DefaultRunnableSpec {
                        .map(_.value.map(ProducerEvent(_)))
                        .run(Sink.head[Chunk[ProducerEvent[String]]])
                        .someOrFailException
-          server  <- serverResource
-          results <- server.use_ {
+          results <- serverResource.use_ {
                        for {
                          _        <- withFastClock.fork
                          _        <- Utils.createQueue(queueName)

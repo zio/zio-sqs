@@ -26,7 +26,7 @@ object TestApp extends zio.App {
     zioaws.core.config.configured() >>>
     zioaws.sqs.live
 
-  val program: ZIO[Sqs with Clock, Throwable, Unit] = for {
+  val program: RIO[Sqs with Clock, Unit] = for {
     _        <- Utils.createQueue(queueName)
     queueUrl <- Utils.getQueueUrl(queueName)
     producer  = Producer.make(queueUrl, Serializer.serializeString)

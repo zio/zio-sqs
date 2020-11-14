@@ -3,11 +3,11 @@ package examples
 import io.github.vigoo.zioaws
 import io.github.vigoo.zioaws.sqs.Sqs
 import zio.clock.Clock
-import zio.{ ExitCode, URIO, ZIO, ZLayer }
 import zio.sqs._
 import zio.sqs.producer._
 import zio.sqs.serialization._
 import zio.stream._
+import zio.{ ExitCode, RIO, URIO, ZLayer }
 
 object PublishExample extends zio.App {
 
@@ -15,9 +15,9 @@ object PublishExample extends zio.App {
     zioaws.core.config.default >>>
     zioaws.sqs.live
 
-  val events                                                                    = List("message1", "message2").map(ProducerEvent(_))
-  val queueName                                                                 = "TestQueue"
-  val program: ZIO[Any with Clock with Sqs, Throwable, Either[Throwable, Unit]] = for {
+  val events                                                = List("message1", "message2").map(ProducerEvent(_))
+  val queueName                                             = "TestQueue"
+  val program: RIO[Clock with Sqs, Either[Throwable, Unit]] = for {
     queueUrl    <- Utils.getQueueUrl(queueName)
     producer     = Producer.make(queueUrl, Serializer.serializeString)
     errOrResult <- producer.use(p => p.sendStream(ZStream(events: _*)).runDrain.either)

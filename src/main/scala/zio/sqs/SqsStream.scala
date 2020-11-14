@@ -3,7 +3,7 @@ package zio.sqs
 import io.github.vigoo.zioaws
 import io.github.vigoo.zioaws.sqs._
 import io.github.vigoo.zioaws.sqs.model._
-import zio.ZIO
+import zio.{ RIO, ZIO }
 import zio.stream.ZStream
 
 object SqsStream {
@@ -34,6 +34,6 @@ object SqsStream {
       .mapM(msg => ZIO.when(settings.autoDelete)(deleteMessage(queueUrl, msg)).as(msg))
   }
 
-  def deleteMessage(queueUrl: String, msg: Message.ReadOnly): ZIO[Sqs, Throwable, Unit] =
+  def deleteMessage(queueUrl: String, msg: Message.ReadOnly): RIO[Sqs, Unit] =
     zioaws.sqs.deleteMessage(DeleteMessageRequest(queueUrl, msg.receiptHandleValue.getOrElse(""))).mapError(_.toThrowable)
 }

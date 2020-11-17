@@ -1,6 +1,5 @@
 package zio.sqs.producer
-
-import software.amazon.awssdk.services.sqs.model.BatchResultErrorEntry
+import io.github.vigoo.zioaws.sqs.model.BatchResultErrorEntry
 
 /**
  * Encodes an error for the published message
@@ -31,11 +30,11 @@ object ProducerError {
   /**
    * Creates a new `ProducerError` out of the result entry and the event that was published.
    */
-  def apply[T](entry: BatchResultErrorEntry, event: ProducerEvent[T]): ProducerError[T] =
+  def apply[T](entry: BatchResultErrorEntry.ReadOnly, event: ProducerEvent[T]): ProducerError[T] =
     ProducerError(
-      senderFault = entry.senderFault(),
-      code = entry.code(),
-      message = Option(entry.message()),
+      senderFault = entry.senderFaultValue,
+      code = entry.codeValue,
+      message = entry.messageValue,
       event = event
     )
 

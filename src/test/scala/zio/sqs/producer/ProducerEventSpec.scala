@@ -1,7 +1,8 @@
 package zio.sqs.producer
 
 import java.util.concurrent.TimeUnit
-import software.amazon.awssdk.services.sqs.model.MessageAttributeValue
+
+import io.github.vigoo.zioaws.sqs.model.MessageAttributeValue
 import zio.ExecutionStrategy
 import zio.duration.Duration
 import zio.test.Assertion._
@@ -13,11 +14,7 @@ object ProducerEventSpec extends DefaultRunnableSpec {
   override def spec: ZSpec[TestEnvironment, Any] =
     suite("ProducerEvent")(
       test("it can be created") {
-        val attr = MessageAttributeValue
-          .builder()
-          .dataType("String")
-          .stringValue("Jane")
-          .build()
+        val attr = MessageAttributeValue(Some("Jane"), dataType = "String")
 
         val e = ProducerEvent(
           data = "1",

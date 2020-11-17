@@ -1,9 +1,8 @@
 package zio.sqs.producer
 
-import java.util.function.BiFunction
-import scala.jdk.CollectionConverters._
-import software.amazon.awssdk.services.sqs.SqsAsyncClient
-import software.amazon.awssdk.services.sqs.model._
+import io.github.vigoo.zioaws
+import io.github.vigoo.zioaws.sqs.Sqs
+import io.github.vigoo.zioaws.sqs.model._
 import zio._
 import zio.clock.Clock
 import zio.duration.Duration
@@ -89,7 +88,6 @@ object Producer {
 
   /**
    * Instantiates a new producer.
-   * @param client sqs async client to use.
    * @param queueUrl url of the queue to publish events.
    *                 A queue can be obtained using {{{Utils.getQueueUrl(client, queueName)}}}
    * @param serializer Serializer for the published event.
@@ -100,16 +98,15 @@ object Producer {
    * @return managed producer for publishing events.
    */
   def make[R, T](
-    client: SqsAsyncClient,
     queueUrl: String,
     serializer: Serializer[T],
     settings: ProducerSettings = ProducerSettings()
-  ): ZManaged[R with Clock, Throwable, Producer[T]] = {
+  ): ZManaged[R with Clock with Sqs, Throwable, Producer[T]] = {
     val eventQueueSize = nextPower2(settings.batchSize * settings.parallelism)
     for {
       eventQueue <- Queue.bounded[SqsRequestEntry[T]](eventQueueSize).toManaged(_.shutdown)
       failQueue  <- Queue.bounded[SqsRequestEntry[T]](eventQueueSize).toManaged(_.shutdown)
-      reqRunner   = runSendMessageBatchRequest[R, T](client, failQueue, settings.retryDelay, settings.retryMaxCount) _
+      reqRunner   = runSendMessageBatchRequest[R, T](failQueue, settings.retryDelay, settings.retryMaxCount) _
       reqBuilder  = buildSendMessageBatchRequest(queueUrl, serializer) _
       stream      = ZStream.fromQueue(failQueue)
                       .merge(ZStream.fromQueue(eventQueue))
@@ -174,29 +171,23 @@ object Producer {
   private[sqs] def buildSendMessageBatchRequest[T](queueUrl: String, serializer: Serializer[T])(entries: List[SqsRequestEntry[T]]): SqsRequest[T] = {
     val reqEntries = entries.zipWithIndex.map {
       case (e: SqsRequestEntry[T], index: Int) =>
-        SendMessageBatchRequestEntry
-          .builder()
-          .id(index.toString)
-          .messageBody(serializer(e.event.data))
-          .messageAttributes(e.event.attributes.asJava)
-          .messageGroupId(e.event.groupId.orNull)
-          .messageDeduplicationId(e.event.deduplicationId.orNull)
-          .delaySeconds(e.event.delay.map(_.getSeconds).getOrElse(0L).toInt)
-          .build()
+        SendMessageBatchRequestEntry(
+          id = index.toString,
+          messageBody = serializer(e.event.data),
+          delaySeconds = e.event.delay.map(_.getSeconds.toInt),
+          messageAttributes = Some(e.event.attributes),
+          messageSystemAttributes = None,
+          messageDeduplicationId = e.event.deduplicationId,
+          messageGroupId = e.event.groupId
+        )
     }
 
-    val req = SendMessageBatchRequest
-      .builder()
-      .queueUrl(queueUrl)
-      .entries(reqEntries.asJava)
-      .build()
-
+    val req = SendMessageBatchRequest(queueUrl, reqEntries)
     SqsRequest(req, entries)
   }
 
   /**
    * Publishes the provided event to SQS.
-   * @param client sqs async client to use
    * @param failedQueue a queue to put events for retry in case of ''recoverable'' failures.
    * @param retryDelay delay to wait inserting events to the failedQueue.
    * @param retryMaxCount max allowed number of retries per event.
@@ -205,42 +196,34 @@ object Producer {
    * @tparam T type of the event to publish.
    * @return result of the operation.
    */
-  private[sqs] def runSendMessageBatchRequest[R, T](client: SqsAsyncClient, failedQueue: Queue[SqsRequestEntry[T]], retryDelay: Duration, retryMaxCount: Int)(
+  private[sqs] def runSendMessageBatchRequest[R, T](failedQueue: Queue[SqsRequestEntry[T]], retryDelay: Duration, retryMaxCount: Int)(
     req: SqsRequest[T]
-  ): RIO[R with Clock, Unit] =
-    RIO.effectAsync[R with Clock, Unit]({ cb =>
-      client
-        .sendMessageBatch(req.inner)
-        .handleAsync[Unit](new BiFunction[SendMessageBatchResponse, Throwable, Unit] {
-          override def apply(res: SendMessageBatchResponse, err: Throwable): Unit =
-            err match {
-              case null =>
-                val m = req.entries.zipWithIndex.map(it => (it._2.toString, it._1)).toMap
+  ): RIO[R with Clock with Sqs, Unit] =
+    zioaws.sqs
+      .sendMessageBatch(req.inner)
+      .mapError(_.toThrowable)
+      .flatMap { res =>
+        val m = req.entries.zipWithIndex.map(it => (it._2.toString, it._1)).toMap
 
-                val responsePartitioner = partitionResponse(m, retryMaxCount) _
-                val responseMapper      = mapResponse(m) _
+        val responsePartitioner = partitionResponse(m, retryMaxCount) _
+        val responseMapper      = mapResponse(m) _
 
-                val (successful, retryable, errors) = responseMapper.tupled(responsePartitioner(res))
+        val (successful, retryable, errors) = responseMapper.tupled(responsePartitioner(res))
 
-                val ret = for {
-                  _ <- URIO.when(retryable.nonEmpty) {
-                         failedQueue
-                           .offerAll(retryable.map(it => it.copy(retryCount = it.retryCount + 1)))
-                           .delay(retryDelay)
-                           .forkDaemon
-                       }
-                  _ <- ZIO.foreach(successful)(entry => entry.done.succeed(Right(entry.event): ErrorOrEvent[T]))
-                  _ <- ZIO.foreach(errors)(entry => entry.done.succeed(Left(entry.error): ErrorOrEvent[T]))
-                } yield ()
-
-                cb(ret)
-              case ex   =>
-                val ret = ZIO.foreach_(req.entries.map(_.done))(_.fail(ex)) *> RIO.fail(ex)
-                cb(ret)
-            }
-        })
-      ()
-    })
+        for {
+          _ <- URIO.when(retryable.nonEmpty) {
+                 failedQueue
+                   .offerAll(retryable.map(it => it.copy(retryCount = it.retryCount + 1)))
+                   .delay(retryDelay)
+                   .forkDaemon
+               }
+          _ <- ZIO.foreach_(successful)(entry => entry.done.succeed(Right(entry.event): ErrorOrEvent[T]))
+          _ <- ZIO.foreach_(errors)(entry => entry.done.succeed(Left(entry.error): ErrorOrEvent[T]))
+        } yield ()
+      }
+      .tapError { ex =>
+        ZIO.foreach_(req.entries.map(_.done))(_.fail(ex)) *> RIO.fail(ex)
+      }
 
   /**
    * Partitions the response into a collections of: successful, retryable and non-retryable events.
@@ -251,12 +234,12 @@ object Producer {
    * @tparam T type of the published event.
    * @return tuple with successful, retryable and non-retryable events.
    */
-  private[sqs] def partitionResponse[T](m: Map[String, SqsRequestEntry[T]], retryMaxCount: Int)(res: SendMessageBatchResponse) = {
-    val successful = res.successful().asScala
-    val failed     = res.failed().asScala
+  private[sqs] def partitionResponse[T](m: Map[String, SqsRequestEntry[T]], retryMaxCount: Int)(res: SendMessageBatchResponse.ReadOnly) = {
+    val successful = res.successfulValue
+    val failed     = res.failedValue
 
-    val (recoverable, unrecoverable) = failed.partition(it => ProducerError.isRecoverable(it.code()))
-    val (retryable, unretryable)     = recoverable.partition(it => m(it.id()).retryCount < retryMaxCount)
+    val (recoverable, unrecoverable) = failed.partition(it => ProducerError.isRecoverable(it.codeValue))
+    val (retryable, unretryable)     = recoverable.partition(it => m(it.idValue).retryCount < retryMaxCount)
 
     (successful, retryable, unrecoverable ++ unretryable)
   }
@@ -266,11 +249,15 @@ object Producer {
    */
   private[sqs] def mapResponse[T](
     m: Map[String, SqsRequestEntry[T]]
-  )(successful: Iterable[SendMessageBatchResultEntry], retryable: Iterable[BatchResultErrorEntry], errors: Iterable[BatchResultErrorEntry]) = {
-    val successfulEntries = successful.map(res => m(res.id()))
-    val retryableEntries  = retryable.map(res => m(res.id()))
+  )(
+    successful: Iterable[SendMessageBatchResultEntry.ReadOnly],
+    retryable: Iterable[BatchResultErrorEntry.ReadOnly],
+    errors: Iterable[BatchResultErrorEntry.ReadOnly]
+  ) = {
+    val successfulEntries = successful.map(res => m(res.idValue))
+    val retryableEntries  = retryable.map(res => m(res.idValue))
     val errorEntries      = errors.map { err =>
-      val entry = m(err.id())
+      val entry = m(err.idValue)
       SqsResponseErrorEntry(entry.done, ProducerError(err, entry.event))
     }
 

@@ -32,7 +32,7 @@ libraryDependencies ++= Seq(
   "dev.zio"                %% "zio-streams"             % "1.0.3",
   "io.github.vigoo"        %% "zio-aws-sqs"             % zioAwsVersion,
   "io.github.vigoo"        %% "zio-aws-netty"           % zioAwsVersion,
-  "org.scala-lang.modules" %% "scala-collection-compat" % "2.2.0",
+  "org.scala-lang.modules" %% "scala-collection-compat" % "2.3.0",
   "dev.zio"                %% "zio-test"                % "1.0.3"  % "test",
   "dev.zio"                %% "zio-test-sbt"            % "1.0.3"  % "test",
   "org.elasticmq"          %% "elasticmq-rest-sqs"      % "0.15.6" % "test",

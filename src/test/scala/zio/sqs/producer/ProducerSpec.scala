@@ -3,22 +3,24 @@ package zio.sqs.producer
 import java.util.UUID
 import java.util.concurrent.atomic.AtomicInteger
 
-import scala.language.implicitConversions
 import io.github.vigoo.zioaws
 import io.github.vigoo.zioaws.core.{ aspects, AwsError }
 import io.github.vigoo.zioaws.sqs.model._
 import io.github.vigoo.zioaws.sqs.{ model, Sqs }
 import software.amazon.awssdk.services.sqs.SqsAsyncClient
+import zio.clock._
 import zio.duration._
-import zio.sqs.{ Util, Utils }
 import zio.sqs.ZioSqsMockServer._
 import zio.sqs.producer.Producer.{ DefaultProducer, SqsRequest, SqsRequestEntry, SqsResponseErrorEntry }
 import zio.sqs.serialization.Serializer
+import zio.sqs.{ Util, Utils }
 import zio.stream.{ Sink, Stream, ZStream }
 import zio.test.Assertion._
 import zio.test._
 import zio.test.environment.{ Live, TestClock, TestEnvironment }
 import zio.{ test => _, _ }
+
+import scala.language.implicitConversions
 
 object ProducerSpec extends DefaultRunnableSpec {
   implicit def batchResultErrorEntryAsReadOnly(e: BatchResultErrorEntry): BatchResultErrorEntry.ReadOnly          = BatchResultErrorEntry.wrap(e.buildAwsValue())
@@ -542,6 +544,37 @@ object ProducerSpec extends DefaultRunnableSpec {
           producer      = Producer.make(queueUrl, Serializer.serializeString, settings).provideCustomLayer(client)
           errOrResults <- producer.use(p => p.produceBatchE(events)).either
         } yield assert(errOrResults.isLeft)(isTrue)
+      },
+      testM("several SendMessageBatchRequest failed with an exception should not stop the producer (#456)") {
+        val queueName                  = "fail-with-exception-" + UUID.randomUUID().toString
+        val queueUrl                   = s"sqs://$queueName"
+        val settings: ProducerSettings = ProducerSettings(batchSize = 1, parallelism = 1, duration = 1.milliseconds)
+        val events                     = List("A", "B", "C", "D", "E").map(ProducerEvent(_))
+
+        val client: ULayer[Sqs] = ZLayer.succeed {
+          new StubSqsService {
+            override def sendMessageBatch(request: SendMessageBatchRequest): IO[AwsError, SendMessageBatchResponse.ReadOnly] =
+              if (List("C", "E").contains(request.entries.head.messageBody))
+                ZIO.succeed {
+                  val batchRequestEntries = request.entries
+                  val resultEntries       = batchRequestEntries.map(entry => SendMessageBatchResultEntry(entry.id, "", ""))
+
+                  SendMessageBatchResponse(resultEntries, Seq.empty)
+                }
+              else
+                ZIO.fail(AwsError.fromThrowable(new RuntimeException("unexpected failure")))
+          }
+        }
+
+        for {
+          _       <- withFastClock.fork
+          producer = Producer.make(queueUrl, Serializer.serializeString, settings).provideCustomLayer(client)
+          results <- producer.use(p => ZIO.foreach(events)(e => sleep(100.milliseconds) *> p.produce(e).either))
+        } yield {
+          val (failures, successes) = results.partition(_.isLeft)
+          assert(successes.collect({ case Right(x) => x.data }))(hasSameElements(List("C", "E"))) &&
+          assert(failures.size)(equalTo(3))
+        }
       }
     ).provideCustomLayerShared((zioaws.netty.default >>> zioaws.core.config.default >>> clientResource).orDie)
 

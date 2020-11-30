@@ -9,6 +9,8 @@ import zio.duration.Duration
 import zio.sqs.serialization.Serializer
 import zio.stream.{ Stream, ZSink, ZStream, ZTransducer }
 
+import scala.util.control.NonFatal
+
 /**
  * Producer that can be used to publish an event of type T to SQS queue
  * An instance of producer should be instantiated before publishing.
@@ -221,9 +223,7 @@ object Producer {
           _ <- ZIO.foreach_(errors)(entry => entry.done.succeed(Left(entry.error): ErrorOrEvent[T]))
         } yield ()
       }
-      .tapError { ex =>
-        ZIO.foreach_(req.entries.map(_.done))(_.fail(ex)) *> RIO.fail(ex)
-      }
+      .catchSome { case NonFatal(e) => ZIO.foreach_(req.entries.map(_.done))(_.fail(e)) }
 
   /**
    * Partitions the response into a collections of: successful, retryable and non-retryable events.

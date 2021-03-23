@@ -25,7 +25,7 @@ developers := List(
 
 publishTo := sonatypePublishToBundle.value
 
-val zioAwsVersion = "3.16.20.2"
+val zioAwsVersion = "3.16.20.3"
 
 libraryDependencies ++= Seq(
   "dev.zio"                %% "zio"                     % "1.0.5",

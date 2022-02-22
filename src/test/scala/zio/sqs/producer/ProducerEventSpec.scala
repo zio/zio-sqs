@@ -2,12 +2,12 @@ package zio.sqs.producer
 
 import java.util.concurrent.TimeUnit
 
-import io.github.vigoo.zioaws.sqs.model.MessageAttributeValue
+import zio.aws.sqs.model.MessageAttributeValue
 import zio.ExecutionStrategy
-import zio.duration.Duration
+import zio.Duration
 import zio.test.Assertion._
 import zio.test._
-import zio.test.environment.TestEnvironment
+import zio.test.TestEnvironment
 
 object ProducerEventSpec extends DefaultRunnableSpec {
 

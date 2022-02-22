@@ -1,7 +1,7 @@
 package zio.sqs.producer
 
-import io.github.vigoo.zioaws.sqs.model.MessageAttributeValue
-import zio.duration.Duration
+import zio.aws.sqs.model.MessageAttributeValue
+import zio.Duration
 
 /**
  * Event to publish to SQS.

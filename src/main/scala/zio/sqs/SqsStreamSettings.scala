@@ -1,6 +1,6 @@
 package zio.sqs
 
-import io.github.vigoo.zioaws.sqs.model._
+import zio.aws.sqs.model._
 
 case class SqsStreamSettings(
   attributeNames: List[QueueAttributeName] = Nil,

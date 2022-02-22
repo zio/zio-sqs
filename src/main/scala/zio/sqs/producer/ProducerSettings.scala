@@ -1,6 +1,7 @@
 package zio.sqs.producer
 
-import zio.duration._
+import zio.Duration
+import zio.durationInt
 
 /**
  * Settings for the producer.

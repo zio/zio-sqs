@@ -1,13 +1,13 @@
 package zio.sqs.producer
 
-import io.github.vigoo.zioaws
-import io.github.vigoo.zioaws.sqs.Sqs
-import io.github.vigoo.zioaws.sqs.model._
+import zio.aws.sqs.Sqs
+import zio.aws.sqs.model._
+import zio.aws.sqs.model.primitives.Integer
 import zio._
-import zio.clock.Clock
-import zio.duration.Duration
+import zio.Clock
+import zio.Duration
 import zio.sqs.serialization.Serializer
-import zio.stream.{ Stream, ZSink, ZStream, ZTransducer }
+import zio.stream.{ Stream, ZSink, ZStream }
 
 import scala.util.control.NonFatal
 
@@ -106,19 +106,19 @@ object Producer {
   ): ZManaged[R with Clock with Sqs, Throwable, Producer[T]] = {
     val eventQueueSize = nextPower2(settings.batchSize * settings.parallelism)
     for {
-      eventQueue <- Queue.bounded[SqsRequestEntry[T]](eventQueueSize).toManaged(_.shutdown)
-      failQueue  <- Queue.bounded[SqsRequestEntry[T]](eventQueueSize).toManaged(_.shutdown)
+      eventQueue <- Queue.bounded[SqsRequestEntry[T]](eventQueueSize).toManagedWith(_.shutdown)
+      failQueue  <- Queue.bounded[SqsRequestEntry[T]](eventQueueSize).toManagedWith(_.shutdown)
       reqRunner   = runSendMessageBatchRequest[R, T](failQueue, settings.retryDelay, settings.retryMaxCount) _
       reqBuilder  = buildSendMessageBatchRequest(queueUrl, serializer) _
       stream      = ZStream.fromQueue(failQueue)
                       .merge(ZStream.fromQueue(eventQueue))
                       .aggregateAsyncWithin(
-                        ZTransducer.collectAllN[SqsRequestEntry[T]](settings.batchSize),
+                        ZSink.collectAllN[SqsRequestEntry[T]](settings.batchSize),
                         Schedule.spaced(settings.duration)
                       )
                       .map(chunks => reqBuilder(chunks.toList))
-                      .mapMPar(settings.parallelism)(reqRunner) // TODO: replace all `mapMPar` in this file with `mapMParUnordered` when zio/zio#2547 is fixed
-      _ <- stream.runDrain.toManaged_.fork
+                      .mapZIOParUnordered(settings.parallelism)(reqRunner)
+      _          <- stream.runDrain.toManaged.fork
     } yield new DefaultProducer[T](eventQueue, settings)
   }
 
@@ -146,13 +146,13 @@ object Producer {
       produceBatchE(es).flatMap(rs => ZIO.foreach(rs)(r => ZIO.fromEither(r)))
 
     override def sendStreamE: Stream[Throwable, ProducerEvent[T]] => ZStream[Any, Throwable, ErrorOrEvent[T]] =
-      es => es.mapMPar(settings.batchSize)(produceE)
+      es => es.mapZIOPar(settings.batchSize)(produceE)
 
     override def sendStream: Stream[Throwable, ProducerEvent[T]] => ZStream[Any, Throwable, ProducerEvent[T]] =
-      es => es.mapMPar(settings.batchSize)(produce)
+      es => es.mapZIOPar(settings.batchSize)(produce)
 
     override def sendSink: ZSink[Any, Throwable, Iterable[ProducerEvent[T]], Nothing, Unit] =
-      ZSink.drain.contramapM(es => produceBatch(es))
+      ZSink.drain.contramapZIO(es => produceBatch(es))
 
     private[sqs] def produceE(e: ProducerEvent[T]): Task[ErrorOrEvent[T]] =
       for {
@@ -176,7 +176,7 @@ object Producer {
         SendMessageBatchRequestEntry(
           id = index.toString,
           messageBody = serializer(e.event.data),
-          delaySeconds = e.event.delay.map(_.getSeconds.toInt),
+          delaySeconds = e.event.delay.map(d => Integer(d.getSeconds.toInt)),
           messageAttributes = Some(e.event.attributes),
           messageSystemAttributes = None,
           messageDeduplicationId = e.event.deduplicationId,
@@ -201,7 +201,7 @@ object Producer {
   private[sqs] def runSendMessageBatchRequest[R, T](failedQueue: Queue[SqsRequestEntry[T]], retryDelay: Duration, retryMaxCount: Int)(
     req: SqsRequest[T]
   ): RIO[R with Clock with Sqs, Unit] =
-    zioaws.sqs
+    zio.aws.sqs.Sqs
       .sendMessageBatch(req.inner)
       .mapError(_.toThrowable)
       .flatMap { res =>
@@ -219,11 +219,11 @@ object Producer {
                    .delay(retryDelay)
                    .forkDaemon
                }
-          _ <- ZIO.foreach_(successful)(entry => entry.done.succeed(Right(entry.event): ErrorOrEvent[T]))
-          _ <- ZIO.foreach_(errors)(entry => entry.done.succeed(Left(entry.error): ErrorOrEvent[T]))
+          _ <- ZIO.foreachDiscard(successful)(entry => entry.done.succeed(Right(entry.event): ErrorOrEvent[T]))
+          _ <- ZIO.foreachDiscard(errors)(entry => entry.done.succeed(Left(entry.error): ErrorOrEvent[T]))
         } yield ()
       }
-      .catchSome { case NonFatal(e) => ZIO.foreach_(req.entries.map(_.done))(_.fail(e)) }
+      .catchSome { case NonFatal(e) => ZIO.foreachDiscard(req.entries.map(_.done))(_.fail(e)) }
 
   /**
    * Partitions the response into a collections of: successful, retryable and non-retryable events.
@@ -235,11 +235,11 @@ object Producer {
    * @return tuple with successful, retryable and non-retryable events.
    */
   private[sqs] def partitionResponse[T](m: Map[String, SqsRequestEntry[T]], retryMaxCount: Int)(res: SendMessageBatchResponse.ReadOnly) = {
-    val successful = res.successfulValue
-    val failed     = res.failedValue
+    val successful = res.successful
+    val failed     = res.failed
 
-    val (recoverable, unrecoverable) = failed.partition(it => ProducerError.isRecoverable(it.codeValue))
-    val (retryable, unretryable)     = recoverable.partition(it => m(it.idValue).retryCount < retryMaxCount)
+    val (recoverable, unrecoverable) = failed.partition(it => ProducerError.isRecoverable(it.code))
+    val (retryable, unretryable)     = recoverable.partition(it => m(it.id).retryCount < retryMaxCount)
 
     (successful, retryable, unrecoverable ++ unretryable)
   }
@@ -254,10 +254,10 @@ object Producer {
     retryable: Iterable[BatchResultErrorEntry.ReadOnly],
     errors: Iterable[BatchResultErrorEntry.ReadOnly]
   ) = {
-    val successfulEntries = successful.map(res => m(res.idValue))
-    val retryableEntries  = retryable.map(res => m(res.idValue))
+    val successfulEntries = successful.map(res => m(res.id))
+    val retryableEntries  = retryable.map(res => m(res.id))
     val errorEntries      = errors.map { err =>
-      val entry = m(err.idValue)
+      val entry = m(err.id)
       SqsResponseErrorEntry(entry.done, ProducerError(err, entry.event))
     }
 

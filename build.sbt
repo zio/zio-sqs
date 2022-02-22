@@ -25,16 +25,17 @@ developers := List(
 
 publishTo := sonatypePublishToBundle.value
 
-val zioAwsVersion = "3.17.100.3"
+val zioVersion = "2.0.0-RC2"
+val zioAwsVersion = "5.17.130.2"
 
 libraryDependencies ++= Seq(
-  "dev.zio"                %% "zio"                     % "1.0.13",
-  "dev.zio"                %% "zio-streams"             % "1.0.13",
-  "io.github.vigoo"        %% "zio-aws-sqs"             % zioAwsVersion,
-  "io.github.vigoo"        %% "zio-aws-netty"           % zioAwsVersion,
+  "dev.zio"                %% "zio"                     % zioVersion,
+  "dev.zio"                %% "zio-streams"             % zioVersion,
+  "dev.zio"                %% "zio-aws-sqs"             % zioAwsVersion,
+  "dev.zio"                %% "zio-aws-netty"           % zioAwsVersion,
   "org.scala-lang.modules" %% "scala-collection-compat" % "2.6.0",
-  "dev.zio"                %% "zio-test"                % "1.0.13" % "test",
-  "dev.zio"                %% "zio-test-sbt"            % "1.0.13" % "test",
+  "dev.zio"                %% "zio-test"                % zioVersion % "test",
+  "dev.zio"                %% "zio-test-sbt"            % zioVersion % "test",
   "org.elasticmq"          %% "elasticmq-rest-sqs"      % "0.15.6" % "test",
   "org.elasticmq"          %% "elasticmq-core"          % "0.15.6" % "test",
   compilerPlugin("org.typelevel" %% "kind-projector"     % "0.10.3"),

@@ -1,5 +1,5 @@
 package zio.sqs.producer
-import io.github.vigoo.zioaws.sqs.model.BatchResultErrorEntry
+import zio.aws.sqs.model.BatchResultErrorEntry
 
 /**
  * Encodes an error for the published message
@@ -32,9 +32,9 @@ object ProducerError {
    */
   def apply[T](entry: BatchResultErrorEntry.ReadOnly, event: ProducerEvent[T]): ProducerError[T] =
     ProducerError(
-      senderFault = entry.senderFaultValue,
-      code = entry.codeValue,
-      message = entry.messageValue,
+      senderFault = entry.senderFault,
+      code = entry.code,
+      message = entry.message,
       event = event
     )
 

@@ -25,7 +25,7 @@ developers := List(
 
 publishTo := sonatypePublishToBundle.value
 
-val zioVersion = "2.0.0-RC2"
+val zioVersion    = "2.0.0-RC2"
 val zioAwsVersion = "5.17.130.2"
 
 libraryDependencies ++= Seq(
@@ -36,8 +36,8 @@ libraryDependencies ++= Seq(
   "org.scala-lang.modules" %% "scala-collection-compat" % "2.6.0",
   "dev.zio"                %% "zio-test"                % zioVersion % "test",
   "dev.zio"                %% "zio-test-sbt"            % zioVersion % "test",
-  "org.elasticmq"          %% "elasticmq-rest-sqs"      % "0.15.6" % "test",
-  "org.elasticmq"          %% "elasticmq-core"          % "0.15.6" % "test",
+  "org.elasticmq"          %% "elasticmq-rest-sqs"      % "0.15.6"   % "test",
+  "org.elasticmq"          %% "elasticmq-core"          % "0.15.6"   % "test",
   compilerPlugin("org.typelevel" %% "kind-projector"     % "0.10.3"),
   compilerPlugin("com.olegpy"    %% "better-monadic-for" % "0.3.1")
 )

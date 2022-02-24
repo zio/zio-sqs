@@ -9,7 +9,6 @@ import zio.Random
 import zio.sqs.ZioSqsMockServer._
 import zio.sqs.producer.{ Producer, ProducerEvent }
 import zio.sqs.serialization.Serializer
-import zio.stream.Sink
 import zio.test.Assertion._
 import zio.test._
 import zio.test.{ Live, TestClock, TestEnvironment }
@@ -22,7 +21,7 @@ object ZioSqsSpec extends DefaultRunnableSpec {
         val settings: SqsStreamSettings = SqsStreamSettings(stopWhenQueueEmpty = true)
 
         for {
-          messages <- gen.sample.map(_.map(_.value).getOrElse(Chunk.empty)).run(Sink.head[Chunk[String]]).someOrFailException
+          messages <- gen.sample.map(_.map(_.value)).runHead.map(_.flatten).someOrFailException
           list     <- serverResource.use(_ => sendAndGet(messages, settings))
 
         } yield assert(list.map(_.body.getOrElse("")))(equalTo(messages))
@@ -32,7 +31,7 @@ object ZioSqsSpec extends DefaultRunnableSpec {
           SqsStreamSettings(stopWhenQueueEmpty = true, autoDelete = false, waitTimeSeconds = Some(1))
 
         for {
-          messages <- gen.sample.map(_.map(_.value).getOrElse(Chunk.empty)).run(Sink.head[Chunk[String]]).someOrFailException
+          messages <- gen.sample.map(_.map(_.value)).runHead.map(_.flatten).someOrFailException
           list     <- serverResource.use { _ =>
                         for {
                           messageFromQueue <- sendAndGet(messages, settings)
@@ -46,7 +45,7 @@ object ZioSqsSpec extends DefaultRunnableSpec {
         val settings: SqsStreamSettings = SqsStreamSettings(stopWhenQueueEmpty = true, waitTimeSeconds = Some(1))
 
         for {
-          messages <- gen.sample.map(_.map(_.value).getOrElse(Chunk.empty)).run(Sink.head[Chunk[String]]).someOrFailException
+          messages <- gen.sample.map(_.map(_.value)).runHead.map(_.flatten).someOrFailException
           list     <- serverResource.use { _ =>
                         for {
                           _    <- sendAndGet(messages, settings)

@@ -552,7 +552,7 @@ object ProducerSpec extends DefaultRunnableSpec {
         val client: ULayer[Sqs] = ZLayer.succeed {
           new StubSqsService {
             override def sendMessageBatch(request: SendMessageBatchRequest): IO[AwsError, SendMessageBatchResponse.ReadOnly] =
-              if (List("C", "E").contains(request.entries.head.messageBody))
+              if (request.entries.isEmpty || List("C", "E").contains(request.entries.head.messageBody))
                 ZIO.succeed {
                   val batchRequestEntries = request.entries
                   val resultEntries       = batchRequestEntries.map(entry => SendMessageBatchResultEntry(entry.id, "", ""))

@@ -22,7 +22,7 @@ object ZioSqsSpec extends DefaultRunnableSpec {
         val settings: SqsStreamSettings = SqsStreamSettings(stopWhenQueueEmpty = true)
 
         for {
-          messages <- gen.sample.map(_.map(_.value).get).run(Sink.head[Chunk[String]]).someOrFailException
+          messages <- gen.sample.map(_.map(_.value).getOrElse(Chunk.empty)).run(Sink.head[Chunk[String]]).someOrFailException
           list     <- serverResource.use(_ => sendAndGet(messages, settings))
 
         } yield assert(list.map(_.body.getOrElse("")))(equalTo(messages))
@@ -32,7 +32,7 @@ object ZioSqsSpec extends DefaultRunnableSpec {
           SqsStreamSettings(stopWhenQueueEmpty = true, autoDelete = false, waitTimeSeconds = Some(1))
 
         for {
-          messages <- gen.sample.map(_.map(_.value).get).run(Sink.head[Chunk[String]]).someOrFailException
+          messages <- gen.sample.map(_.map(_.value).getOrElse(Chunk.empty)).run(Sink.head[Chunk[String]]).someOrFailException
           list     <- serverResource.use { _ =>
                         for {
                           messageFromQueue <- sendAndGet(messages, settings)
@@ -46,7 +46,7 @@ object ZioSqsSpec extends DefaultRunnableSpec {
         val settings: SqsStreamSettings = SqsStreamSettings(stopWhenQueueEmpty = true, waitTimeSeconds = Some(1))
 
         for {
-          messages <- gen.sample.map(_.map(_.value).get).run(Sink.head[Chunk[String]]).someOrFailException
+          messages <- gen.sample.map(_.map(_.value).getOrElse(Chunk.empty)).run(Sink.head[Chunk[String]]).someOrFailException
           list     <- serverResource.use { _ =>
                         for {
                           _    <- sendAndGet(messages, settings)

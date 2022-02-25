@@ -3,13 +3,11 @@ package zio.sqs.producer
 import java.util.UUID
 import java.util.concurrent.atomic.AtomicInteger
 
-import io.github.vigoo.zioaws
-import io.github.vigoo.zioaws.core.{ aspects, AwsError }
-import io.github.vigoo.zioaws.sqs.model._
-import io.github.vigoo.zioaws.sqs.{ model, Sqs }
+import zio.aws.core.{ aspects, AwsError }
+import zio.aws.sqs.model._
+import zio.aws.sqs.{ model, Sqs }
 import software.amazon.awssdk.services.sqs.SqsAsyncClient
-import zio.clock._
-import zio.duration._
+import zio.durationInt
 import zio.sqs.ZioSqsMockServer._
 import zio.sqs.producer.Producer.{ DefaultProducer, SqsRequest, SqsRequestEntry, SqsResponseErrorEntry }
 import zio.sqs.serialization.Serializer
@@ -17,7 +15,7 @@ import zio.sqs.{ Util, Utils }
 import zio.stream.{ Sink, Stream, ZStream }
 import zio.test.Assertion._
 import zio.test._
-import zio.test.environment.{ Live, TestClock, TestEnvironment }
+import zio.test.{ Live, TestClock, TestEnvironment }
 import zio.{ test => _, _ }
 
 import scala.language.implicitConversions
@@ -37,7 +35,7 @@ object ProducerSpec extends DefaultRunnableSpec {
         assert(Producer.nextPower2(129))(equalTo(256)) &&
         assert(Producer.nextPower2(257))(equalTo(512))
       },
-      testM("SqsRequestEntry can be created") {
+      test("SqsRequestEntry can be created") {
         val attr = MessageAttributeValue(Some("Bob"), dataType = "String")
 
         val pe = ProducerEvent(
@@ -55,7 +53,7 @@ object ProducerSpec extends DefaultRunnableSpec {
           assert(isDone)(isFalse) &&
           assert(requestEntry.retryCount)(equalTo(10))
       },
-      testM("SqsRequest can be created") {
+      test("SqsRequest can be created") {
         val attr = MessageAttributeValue(Some("Bob"), dataType = "String")
 
         val pe = ProducerEvent(
@@ -76,7 +74,7 @@ object ProducerSpec extends DefaultRunnableSpec {
         } yield assert(request.inner)(equalTo(batchReq)) &&
           assert(request.entries)(equalTo(List(requestEntry)))
       },
-      testM("SqsResponseErrorEntry can be created") {
+      test("SqsResponseErrorEntry can be created") {
         val event    = ProducerEvent("e1")
         val errEntry = BatchResultErrorEntry(id = "id1", senderFault = true, code = "code2", message = Some("message3"))
 
@@ -89,7 +87,7 @@ object ProducerSpec extends DefaultRunnableSpec {
         } yield assert(errEntry.error)(equalTo(eventError)) &&
           assert(isDone)(isFalse)
       },
-      testM("SendMessageBatchResponse can be partitioned") {
+      test("SendMessageBatchResponse can be partitioned") {
         val retryMaxCount = 10
         val rs            = Range(0, 4).toList
         val ids           = rs.map(_.toString)
@@ -110,7 +108,7 @@ object ProducerSpec extends DefaultRunnableSpec {
           assert(retryable.size)(equalTo(1)) &&
           assert(errors.size)(equalTo(2))
       },
-      testM("SendMessageBatchResponse can be partitioned and mapped") {
+      test("SendMessageBatchResponse can be partitioned and mapped") {
         val retryMaxCount = 10
         val rs            = Range(0, 4).toList
         val ids           = rs.map(_.toString)
@@ -140,7 +138,7 @@ object ProducerSpec extends DefaultRunnableSpec {
           assert(retryableEntries.toList.map(_.event.data))(hasSameElements(List("B"))) &&
           assert(errorsEntries.toList.map(_.error.event.data))(hasSameElements(List("C", "D")))
       },
-      testM("buildSendMessageBatchRequest creates a new request") {
+      test("buildSendMessageBatchRequest creates a new request") {
         val queueUrl = "sqs://queue"
 
         val attr = MessageAttributeValue(Some("Bob"), dataType = "String")
@@ -189,18 +187,18 @@ object ProducerSpec extends DefaultRunnableSpec {
           assert(innerReqEntries(1).messageDeduplicationId)(isSome(equalTo("d2")))
         }
       },
-      testM("runSendMessageBatchRequest can be executed") {
+      test("runSendMessageBatchRequest can be executed") {
         val queueName                  = "runSendMessageBatchRequest-" + UUID.randomUUID().toString
         val settings: ProducerSettings = ProducerSettings()
         val eventCount                 = settings.batchSize
         for {
           events     <- Util.chunkOfStringsN(eventCount)
                           .sample
-                          .map(_.value.map(ProducerEvent(_)))
+                          .map(_.get.value.map(ProducerEvent(_)))
                           .run(Sink.head[Chunk[ProducerEvent[String]]])
                           .someOrFailException
           retryQueue <- queueResource(16)
-          dones      <- serverResource.use_ {
+          dones      <- serverResource.useDiscard {
                           retryQueue.use {
                             q =>
                               for {
@@ -222,7 +220,7 @@ object ProducerSpec extends DefaultRunnableSpec {
           isAllRight <- dones.map(_.forall(_.isRight))
         } yield assert(isAllRight)(isTrue)
       },
-      testM("events can be published using sendStream and return the results") {
+      test("events can be published using sendStream and return the results") {
         val queueName                  = "sendStream-" + UUID.randomUUID().toString
         val settings: ProducerSettings = ProducerSettings()
         val eventCount                 = (settings.batchSize * 2) + 3
@@ -231,10 +229,10 @@ object ProducerSpec extends DefaultRunnableSpec {
           events  <- Util
                        .chunkOfStringsN(eventCount)
                        .sample
-                       .map(_.value.map(ProducerEvent(_)))
+                       .map(_.get.value.map(ProducerEvent(_)))
                        .run(Sink.head[Chunk[ProducerEvent[String]]])
                        .someOrFailException
-          results <- serverResource.use_ {
+          results <- serverResource.useDiscard {
                        for {
                          _           <- withFastClock.fork
                          _           <- Utils.createQueue(queueName)
@@ -251,7 +249,7 @@ object ProducerSpec extends DefaultRunnableSpec {
         } yield assert(results.size)(equalTo(events.size)) &&
           assert(results.forall(_.isRight))(isTrue)
       },
-      testM("events can be published using sendStream and fail the task on error") {
+      test("events can be published using sendStream and fail the task on error") {
         val queueName                  = "produce-" + UUID.randomUUID().toString
         val queueUrl                   = s"sqs://$queueName"
         val settings: ProducerSettings = ProducerSettings()
@@ -264,7 +262,7 @@ object ProducerSpec extends DefaultRunnableSpec {
           errOrResult <- producer.use(p => p.sendStream(Stream(events: _*)).runDrain.either)
         } yield assert(errOrResult.isLeft)(isTrue)
       },
-      testM("events can be published using produce and return the results") {
+      test("events can be published using produce and return the results") {
         val queueName                  = "produce-" + UUID.randomUUID().toString
         val settings: ProducerSettings = ProducerSettings()
         val eventCount                 = settings.batchSize
@@ -273,10 +271,10 @@ object ProducerSpec extends DefaultRunnableSpec {
           events  <- Util
                        .chunkOfStringsN(eventCount)
                        .sample
-                       .map(_.value.map(ProducerEvent(_)))
+                       .map(_.get.value.map(ProducerEvent(_)))
                        .run(Sink.head[Chunk[ProducerEvent[String]]])
                        .someOrFailException
-          results <- serverResource.use_ {
+          results <- serverResource.useDiscard {
                        for {
                          _        <- withFastClock.fork
                          _        <- Utils.createQueue(queueName)
@@ -288,7 +286,7 @@ object ProducerSpec extends DefaultRunnableSpec {
         } yield assert(results.size)(equalTo(events.size)) &&
           assert(results.forall(_.isRight))(isTrue)
       },
-      testM("events can be pushed using produce and fail the task on error") {
+      test("events can be pushed using produce and fail the task on error") {
         val queueName                  = "produce-" + UUID.randomUUID().toString
         val queueUrl                   = s"sqs://$queueName"
         val settings: ProducerSettings = ProducerSettings()
@@ -301,7 +299,7 @@ object ProducerSpec extends DefaultRunnableSpec {
           errOrResults <- producer.use(p => ZIO.foreachPar(events)(event => p.produce(event))).either
         } yield assert(errOrResults.isLeft)(isTrue)
       },
-      testM("events can be published using produceBatch and return the results") {
+      test("events can be published using produceBatch and return the results") {
         val queueName                  = "produceBatch-" + UUID.randomUUID().toString
         val settings: ProducerSettings = ProducerSettings()
         val eventCount                 = settings.batchSize * 2
@@ -310,10 +308,10 @@ object ProducerSpec extends DefaultRunnableSpec {
           events  <- Util
                        .chunkOfStringsN(eventCount)
                        .sample
-                       .map(_.value.map(ProducerEvent(_)))
+                       .map(_.get.value.map(ProducerEvent(_)))
                        .run(Sink.head[Chunk[ProducerEvent[String]]])
                        .someOrFailException
-          results <- serverResource.use_ {
+          results <- serverResource.useDiscard {
                        for {
                          _        <- withFastClock.fork
                          _        <- Utils.createQueue(queueName)
@@ -325,7 +323,7 @@ object ProducerSpec extends DefaultRunnableSpec {
         } yield assert(results.size)(equalTo(events.size)) &&
           assert(results.forall(_.isRight))(isTrue)
       },
-      testM("events can be published using produceBatch and fail the task on error") {
+      test("events can be published using produceBatch and fail the task on error") {
         val queueName                  = "produceBatch-" + UUID.randomUUID().toString
         val queueUrl                   = s"sqs://$queueName"
         val settings: ProducerSettings = ProducerSettings()
@@ -338,7 +336,7 @@ object ProducerSpec extends DefaultRunnableSpec {
           errOrResults <- producer.use(p => p.produceBatch(events)).either
         } yield assert(errOrResults.isLeft)(isTrue)
       },
-      testM("events can be published using sendSink") {
+      test("events can be published using sendSink") {
         val queueName                  = "sendSink-" + UUID.randomUUID().toString
         val settings: ProducerSettings = ProducerSettings()
         val eventCount                 = settings.batchSize
@@ -347,10 +345,10 @@ object ProducerSpec extends DefaultRunnableSpec {
           events  <- Util
                        .chunkOfStringsN(eventCount)
                        .sample
-                       .map(_.value.map(ProducerEvent(_)))
+                       .map(_.get.value.map(ProducerEvent(_)))
                        .run(Sink.head[Chunk[ProducerEvent[String]]])
                        .someOrFailException
-          results <- serverResource.use_ {
+          results <- serverResource.useDiscard {
                        for {
                          _        <- withFastClock.fork
                          _        <- Utils.createQueue(queueName)
@@ -361,7 +359,7 @@ object ProducerSpec extends DefaultRunnableSpec {
                      }
         } yield assert(results)(equalTo(()))
       },
-      testM("events that published using sendSink and generate an exception on send should fail the sink") {
+      test("events that published using sendSink and generate an exception on send should fail the sink") {
         val queueName                  = "sendSink-" + UUID.randomUUID().toString
         val queueUrl                   = s"sqs://$queueName"
         val settings: ProducerSettings = ProducerSettings()
@@ -382,7 +380,7 @@ object ProducerSpec extends DefaultRunnableSpec {
           errOrResults <- producer.use(p => Stream.succeed(events).run(p.sendSink)).either
         } yield assert(errOrResults.isLeft)(isTrue)
       },
-      testM("events that published using sendSink and return an unrecoverable error should fail the sink on error") {
+      test("events that published using sendSink and return an unrecoverable error should fail the sink on error") {
         val queueName                  = "sendSink-" + UUID.randomUUID().toString
         val queueUrl                   = s"sqs://$queueName"
         val settings: ProducerSettings = ProducerSettings()
@@ -395,7 +393,7 @@ object ProducerSpec extends DefaultRunnableSpec {
           errOrResults <- producer.use(p => Stream.succeed(events).run(p.sendSink)).either
         } yield assert(errOrResults.isLeft)(isTrue)
       },
-      testM("submitted events can succeed and fail if there are unrecoverable errors") {
+      test("submitted events can succeed and fail if there are unrecoverable errors") {
         val queueName                  = "success-and-unrecoverable-failures-" + UUID.randomUUID().toString
         val queueUrl                   = s"sqs://$queueName"
         val settings: ProducerSettings = ProducerSettings()
@@ -440,7 +438,7 @@ object ProducerSpec extends DefaultRunnableSpec {
           assert(failures)(hasSameElements(List("B", "C")))
         }
       },
-      testM("submitted events can be republished if there are recoverable errors") {
+      test("submitted events can be republished if there are recoverable errors") {
         val queueName                  = "success-and-recoverable-failures-" + UUID.randomUUID().toString
         val queueUrl                   = s"sqs://$queueName"
         val settings: ProducerSettings = ProducerSettings()
@@ -452,7 +450,7 @@ object ProducerSpec extends DefaultRunnableSpec {
             override def sendMessageBatch(
               request: SendMessageBatchRequest
             ): IO[AwsError, SendMessageBatchResponse.ReadOnly] =
-              IO.effectTotal {
+              IO.succeed {
                 invokeCount.incrementAndGet()
 
                 val batchRequestEntries                                       = request.entries
@@ -483,7 +481,7 @@ object ProducerSpec extends DefaultRunnableSpec {
           assert(invokeCount.get())(isGreaterThanEqualTo(2))
         }
       },
-      testM("if the number of recoverable retries exceeds the limit, messages fail") {
+      test("if the number of recoverable retries exceeds the limit, messages fail") {
         val queueName                  = "fail-when-retry-limit-reached-" + UUID.randomUUID().toString
         val queueUrl                   = s"sqs://$queueName"
         val settings: ProducerSettings = ProducerSettings()
@@ -524,7 +522,7 @@ object ProducerSpec extends DefaultRunnableSpec {
           assert(invokeCount.get())(equalTo((settings.retryMaxCount + 1) * events.size))
         }
       },
-      testM("a SendMessageBatchRequest failed with an exception should fail") {
+      test("a SendMessageBatchRequest failed with an exception should fail") {
         val queueName                  = "fail-with-exception-" + UUID.randomUUID().toString
         val queueUrl                   = s"sqs://$queueName"
         val settings: ProducerSettings = ProducerSettings()
@@ -545,7 +543,7 @@ object ProducerSpec extends DefaultRunnableSpec {
           errOrResults <- producer.use(p => p.produceBatchE(events)).either
         } yield assert(errOrResults.isLeft)(isTrue)
       },
-      testM("several SendMessageBatchRequest failed with an exception should not stop the producer (#456)") {
+      test("several SendMessageBatchRequest failed with an exception should not stop the producer (#456)") {
         val queueName                  = "fail-with-exception-" + UUID.randomUUID().toString
         val queueUrl                   = s"sqs://$queueName"
         val settings: ProducerSettings = ProducerSettings(batchSize = 1, parallelism = 1, duration = 1.milliseconds)
@@ -554,7 +552,7 @@ object ProducerSpec extends DefaultRunnableSpec {
         val client: ULayer[Sqs] = ZLayer.succeed {
           new StubSqsService {
             override def sendMessageBatch(request: SendMessageBatchRequest): IO[AwsError, SendMessageBatchResponse.ReadOnly] =
-              if (List("C", "E").contains(request.entries.head.messageBody))
+              if (request.entries.isEmpty || List("C", "E").contains(request.entries.head.messageBody))
                 ZIO.succeed {
                   val batchRequestEntries = request.entries
                   val resultEntries       = batchRequestEntries.map(entry => SendMessageBatchResultEntry(entry.id, "", ""))
@@ -569,25 +567,25 @@ object ProducerSpec extends DefaultRunnableSpec {
         for {
           _       <- withFastClock.fork
           producer = Producer.make(queueUrl, Serializer.serializeString, settings).provideCustomLayer(client)
-          results <- producer.use(p => ZIO.foreach(events)(e => sleep(100.milliseconds) *> p.produce(e).either))
+          results <- producer.use(p => ZIO.foreach(events)(e => ZIO.sleep(100.milliseconds) *> p.produce(e).either))
         } yield {
           val (failures, successes) = results.partition(_.isLeft)
           assert(successes.collect({ case Right(x) => x.data }))(hasSameElements(List("C", "E"))) &&
           assert(failures.size)(equalTo(3))
         }
       }
-    ).provideCustomLayerShared((zioaws.netty.default >>> zioaws.core.config.default >>> clientResource).orDie)
+    ).provideCustomLayerShared((zio.aws.netty.NettyHttpClient.default >>> zio.aws.core.config.AwsConfig.default >>> clientResource).orDie)
 
   override def aspects: List[TestAspect[Nothing, TestEnvironment, Nothing, Any]] =
     List(TestAspect.executionStrategy(ExecutionStrategy.Sequential))
 
   def queueResource(capacity: Int): Task[ZManaged[Any, Throwable, Queue[SqsRequestEntry[String]]]] =
     Task.succeed {
-      Queue.bounded[SqsRequestEntry[String]](capacity).toManaged(_.shutdown)
+      Queue.bounded[SqsRequestEntry[String]](capacity).toManagedWith(_.shutdown)
     }
 
   def withFastClock: ZIO[TestClock with Live, Nothing, Long] =
-    Live.withLive(TestClock.adjust(1.seconds))(_.repeat(Schedule.spaced(10.millis)))
+    Live.withLive(TestClock.adjust(1.seconds))(_.repeat[ZEnv, Long](Schedule.spaced(10.millis)))
 
   /**
    * A client that fails all incoming messages in the batch with unrecoverable error.
@@ -607,11 +605,12 @@ object ProducerSpec extends DefaultRunnableSpec {
   }
 }
 
-class StubSqsService extends Sqs.Service {
+class StubSqsService extends Sqs {
   override lazy val api: SqsAsyncClient                                                                                                                      = ???
   override def getQueueAttributes(request: model.GetQueueAttributesRequest): IO[AwsError, GetQueueAttributesResponse.ReadOnly]                               = ???
   override def sendMessage(request: model.SendMessageRequest): IO[AwsError, SendMessageResponse.ReadOnly]                                                    = ???
   override def listQueues(request: model.ListQueuesRequest): ZStream[Any, AwsError, String]                                                                  = ???
+  override def listQueuesPaginated(request: model.ListQueuesRequest): ZIO[Any, AwsError, ListQueuesResponse.ReadOnly]                                        = ???
   override def untagQueue(request: model.UntagQueueRequest): IO[AwsError, Unit]                                                                              = ???
   override def tagQueue(request: model.TagQueueRequest): IO[AwsError, Unit]                                                                                  = ???
   override def deleteMessage(request: model.DeleteMessageRequest): IO[AwsError, Unit]                                                                        = ???
@@ -621,6 +620,9 @@ class StubSqsService extends Sqs.Service {
   override def listQueueTags(request: model.ListQueueTagsRequest): IO[AwsError, ListQueueTagsResponse.ReadOnly]                                              = ???
   override def createQueue(request: CreateQueueRequest): IO[AwsError, CreateQueueResponse.ReadOnly]                                                          = ???
   override def listDeadLetterSourceQueues(request: model.ListDeadLetterSourceQueuesRequest): ZStream[Any, AwsError, String]                                  = ???
+  override def listDeadLetterSourceQueuesPaginated(
+    request: model.ListDeadLetterSourceQueuesRequest
+  ): ZIO[Any, AwsError, ListDeadLetterSourceQueuesResponse.ReadOnly]                                                                                         = ???
   override def getQueueUrl(request: GetQueueUrlRequest): IO[AwsError, GetQueueUrlResponse.ReadOnly]                                                          = ???
   override def removePermission(request: model.RemovePermissionRequest): IO[AwsError, Unit]                                                                  = ???
   override def receiveMessage(request: model.ReceiveMessageRequest): IO[AwsError, ReceiveMessageResponse.ReadOnly]                                           = ???
@@ -630,5 +632,5 @@ class StubSqsService extends Sqs.Service {
   override def changeMessageVisibilityBatch(request: model.ChangeMessageVisibilityBatchRequest): IO[AwsError, ChangeMessageVisibilityBatchResponse.ReadOnly] =
     ???
   override def changeMessageVisibility(request: model.ChangeMessageVisibilityRequest): IO[AwsError, Unit]                                                    = ???
-  override def withAspect[R](newAspect: aspects.AwsCallAspect[R], r: R): Sqs.Service                                                                         = ???
+  override def withAspect[R](newAspect: aspects.AwsCallAspect[R], r: ZEnvironment[R]): Sqs                                                                   = ???
 }

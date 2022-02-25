@@ -1,10 +1,10 @@
 package zio.sqs.producer
 
-import io.github.vigoo.zioaws.sqs.model.BatchResultErrorEntry
+import zio.aws.sqs.model.BatchResultErrorEntry
 import zio.ExecutionStrategy
 import zio.test.Assertion._
 import zio.test._
-import zio.test.environment.TestEnvironment
+import zio.test.TestEnvironment
 
 object ProducerErrorSpec extends DefaultRunnableSpec {
 

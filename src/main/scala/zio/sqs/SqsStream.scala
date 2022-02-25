@@ -1,10 +1,11 @@
 package zio.sqs
 
-import io.github.vigoo.zioaws
-import io.github.vigoo.zioaws.sqs._
-import io.github.vigoo.zioaws.sqs.model._
+import zio.aws.sqs._
+import zio.aws.sqs.model._
 import zio.{ RIO, ZIO }
 import zio.stream.ZStream
+import zio.aws.sqs.model.primitives.MessageAttributeName
+import zio.aws.sqs.model.primitives.Integer
 
 object SqsStream {
 
@@ -16,24 +17,24 @@ object SqsStream {
     val request = ReceiveMessageRequest(
       queueUrl = queueUrl,
       attributeNames = Some(settings.attributeNames),
-      messageAttributeNames = Some(settings.messageAttributeNames),
-      maxNumberOfMessages = Some(settings.maxNumberOfMessages),
-      visibilityTimeout = settings.visibilityTimeout,
-      waitTimeSeconds = settings.waitTimeSeconds
+      messageAttributeNames = Some(settings.messageAttributeNames.map(MessageAttributeName.apply(_))),
+      maxNumberOfMessages = Some(Integer(settings.maxNumberOfMessages)),
+      visibilityTimeout = Some(Integer(settings.visibilityTimeout.getOrElse(30))),
+      waitTimeSeconds = Some(Integer(settings.waitTimeSeconds.getOrElse(20)))
     )
 
     ZStream
-      .repeatEffect(
-        zioaws.sqs
+      .repeatZIO(
+        zio.aws.sqs.Sqs
           .receiveMessage(request)
           .mapError(_.toThrowable)
       )
-      .map(_.messagesValue.getOrElse(List.empty))
+      .map(_.messages.getOrElse(List.empty))
       .takeWhile(_.nonEmpty || !settings.stopWhenQueueEmpty)
       .mapConcat(identity)
-      .mapM(msg => ZIO.when(settings.autoDelete)(deleteMessage(queueUrl, msg)).as(msg))
+      .mapZIO(msg => ZIO.when(settings.autoDelete)(deleteMessage(queueUrl, msg)).as(msg))
   }
 
   def deleteMessage(queueUrl: String, msg: Message.ReadOnly): RIO[Sqs, Unit] =
-    zioaws.sqs.deleteMessage(DeleteMessageRequest(queueUrl, msg.receiptHandleValue.getOrElse(""))).mapError(_.toThrowable)
+    zio.aws.sqs.Sqs.deleteMessage(DeleteMessageRequest(queueUrl, msg.receiptHandle.getOrElse(""))).mapError(_.toThrowable)
 }

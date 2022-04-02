@@ -2,7 +2,6 @@ package zio.sqs.producer
 
 import zio.aws.sqs.Sqs
 import zio.aws.sqs.model._
-import zio.aws.sqs.model.primitives.Integer
 import zio._
 import zio.Clock
 import zio.Duration
@@ -103,11 +102,11 @@ object Producer {
     queueUrl: String,
     serializer: Serializer[T],
     settings: ProducerSettings = ProducerSettings()
-  ): ZManaged[R with Clock with Sqs, Throwable, Producer[T]] = {
+  ): ZIO[R with Clock with Sqs with Scope, Throwable, Producer[T]] = {
     val eventQueueSize = nextPower2(settings.batchSize * settings.parallelism)
     for {
-      eventQueue <- Queue.bounded[SqsRequestEntry[T]](eventQueueSize).toManagedWith(_.shutdown)
-      failQueue  <- Queue.bounded[SqsRequestEntry[T]](eventQueueSize).toManagedWith(_.shutdown)
+      eventQueue <- ZIO.acquireRelease(Queue.bounded[SqsRequestEntry[T]](eventQueueSize))(_.shutdown)
+      failQueue  <- ZIO.acquireRelease(Queue.bounded[SqsRequestEntry[T]](eventQueueSize))(_.shutdown)
       reqRunner   = runSendMessageBatchRequest[R, T](failQueue, settings.retryDelay, settings.retryMaxCount) _
       reqBuilder  = buildSendMessageBatchRequest(queueUrl, serializer) _
       stream      = ZStream.fromQueue(failQueue)
@@ -118,7 +117,7 @@ object Producer {
                       )
                       .map(chunks => reqBuilder(chunks.toList))
                       .mapZIOParUnordered(settings.parallelism)(reqRunner)
-      _          <- stream.runDrain.toManaged.fork
+      _          <- stream.runDrain.fork
     } yield new DefaultProducer[T](eventQueue, settings)
   }
 
@@ -176,7 +175,7 @@ object Producer {
         SendMessageBatchRequestEntry(
           id = index.toString,
           messageBody = serializer(e.event.data),
-          delaySeconds = e.event.delay.map(d => Integer(d.getSeconds.toInt)),
+          delaySeconds = e.event.delay.map(d => d.getSeconds.toInt),
           messageAttributes = Some(e.event.attributes),
           messageSystemAttributes = None,
           messageDeduplicationId = e.event.deduplicationId,

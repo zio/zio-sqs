@@ -22,7 +22,7 @@ object ZioSqsSpec extends DefaultRunnableSpec {
 
         for {
           messages <- gen.runHead.someOrFailException
-          list     <- serverResource.use(_ => sendAndGet(messages, settings))
+          list     <- ZIO.scoped(serverResource.flatMap(_ => sendAndGet(messages, settings)))
 
         } yield assert(list.map(_.body.getOrElse("")))(equalTo(messages))
       },
@@ -32,11 +32,13 @@ object ZioSqsSpec extends DefaultRunnableSpec {
 
         for {
           messages <- gen.runHead.someOrFailException
-          list     <- serverResource.use { _ =>
-                        for {
-                          messageFromQueue <- sendAndGet(messages, settings)
-                          list             <- deleteAndGet(messageFromQueue, settings)
-                        } yield list
+          list     <- ZIO.scoped {
+                        serverResource.flatMap { _ =>
+                          for {
+                            messageFromQueue <- sendAndGet(messages, settings)
+                            list             <- deleteAndGet(messageFromQueue, settings)
+                          } yield list
+                        }
                       }
 
         } yield assert(list)(isEmpty)
@@ -46,11 +48,13 @@ object ZioSqsSpec extends DefaultRunnableSpec {
 
         for {
           messages <- gen.runHead.someOrFailException
-          list     <- serverResource.use { _ =>
-                        for {
-                          _    <- sendAndGet(messages, settings)
-                          list <- get(settings)
-                        } yield list
+          list     <- ZIO.scoped {
+                        serverResource.flatMap { _ =>
+                          for {
+                            _    <- sendAndGet(messages, settings)
+                            list <- get(settings)
+                          } yield list
+                        }
                       }
         } yield assert(list)(isEmpty)
       }
@@ -72,7 +76,7 @@ object ZioSqsSpec extends DefaultRunnableSpec {
       _                 <- Utils.createQueue(queueName)
       queueUrl          <- Utils.getQueueUrl(queueName)
       producer           = Producer.make(queueUrl, Serializer.serializeString)
-      _                 <- producer.use(p => ZIO.foreach(messages)(it => p.produce(ProducerEvent(it))))
+      _                 <- ZIO.scoped(producer.flatMap(p => ZIO.foreach(messages)(it => p.produce(ProducerEvent(it)))))
       messagesFromQueue <- SqsStream(queueUrl, settings).runCollect
     } yield messagesFromQueue
 

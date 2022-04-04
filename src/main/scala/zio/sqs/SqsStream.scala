@@ -5,7 +5,6 @@ import zio.aws.sqs.model._
 import zio.{ RIO, ZIO }
 import zio.stream.ZStream
 import zio.aws.sqs.model.primitives.MessageAttributeName
-import zio.aws.sqs.model.primitives.Integer
 
 object SqsStream {
 
@@ -18,9 +17,9 @@ object SqsStream {
       queueUrl = queueUrl,
       attributeNames = Some(settings.attributeNames),
       messageAttributeNames = Some(settings.messageAttributeNames.map(MessageAttributeName.apply(_))),
-      maxNumberOfMessages = Some(Integer(settings.maxNumberOfMessages)),
-      visibilityTimeout = Some(Integer(settings.visibilityTimeout.getOrElse(30))),
-      waitTimeSeconds = Some(Integer(settings.waitTimeSeconds.getOrElse(20)))
+      maxNumberOfMessages = Some(settings.maxNumberOfMessages),
+      visibilityTimeout = Some(settings.visibilityTimeout.getOrElse(30)),
+      waitTimeSeconds = Some(settings.waitTimeSeconds.getOrElse(20))
     )
 
     ZStream

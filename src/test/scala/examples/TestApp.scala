@@ -30,13 +30,15 @@ object TestApp extends zio.ZIOAppDefault {
     _        <- Utils.createQueue(queueName)
     queueUrl <- Utils.getQueueUrl(queueName)
     producer  = Producer.make(queueUrl, Serializer.serializeString)
-    _        <- producer.use { p =>
-                  p.produce(ProducerEvent("hello"))
+    _        <- ZIO.scoped {
+                  producer.flatMap { p =>
+                    p.produce(ProducerEvent("hello"))
+                  }
                 }
     _        <- SqsStream(
                   queueUrl,
                   SqsStreamSettings(stopWhenQueueEmpty = true, waitTimeSeconds = Some(3))
-                ).foreach(msg => UIO(println(msg.body)))
+                ).foreach(msg => ZIO.succeed(println(msg.body)))
   } yield ()
 
   override def run: URIO[zio.ZEnv, ExitCode] =

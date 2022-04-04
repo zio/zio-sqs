@@ -34,7 +34,7 @@ object ProducerError {
     ProducerError(
       senderFault = entry.senderFault,
       code = entry.code,
-      message = entry.message,
+      message = entry.message.toOption,
       event = event
     )
 

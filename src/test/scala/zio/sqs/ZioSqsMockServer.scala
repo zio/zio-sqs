@@ -7,7 +7,7 @@ import zio.aws.sqs.Sqs
 import org.elasticmq.rest.sqs.{ SQSRestServer, SQSRestServerBuilder }
 import software.amazon.awssdk.auth.credentials.{ AwsBasicCredentials, StaticCredentialsProvider }
 import software.amazon.awssdk.regions.Region
-import zio.{ Scope, UIO, ZIO, ZLayer }
+import zio.{ Scope, ZIO, ZLayer }
 
 object ZioSqsMockServer {
   private val staticCredentialsProvider: StaticCredentialsProvider =
@@ -18,7 +18,7 @@ object ZioSqsMockServer {
   val serverResource: ZIO[Any with Scope, Throwable, SQSRestServer] =
     ZIO.acquireRelease(
       ZIO.attempt(SQSRestServerBuilder.start())
-    )(server => UIO.succeed(server.stopAndWait()))
+    )(server => ZIO.succeed(server.stopAndWait()))
 
   val clientResource: ZLayer[AwsConfig, Throwable, Sqs] =
     zio.aws.sqs.Sqs.customized(

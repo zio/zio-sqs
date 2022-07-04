@@ -1,13 +1,13 @@
 package zio.sqs.serialization
 
-import zio.ExecutionStrategy
+import zio.{ Chunk, ExecutionStrategy }
 import zio.test.Assertion._
 import zio.test._
 import zio.test.TestEnvironment
 
-object SerializerSpec extends DefaultRunnableSpec {
+object SerializerSpec extends ZIOSpecDefault {
 
-  override def spec: ZSpec[TestEnvironment, Any] =
+  override def spec: Spec[TestEnvironment, Any] =
     suite("Serializer")(
       test("serializeString can serialize the string") {
         val input    = "some-string-value"
@@ -18,6 +18,6 @@ object SerializerSpec extends DefaultRunnableSpec {
       }
     )
 
-  override def aspects: List[TestAspect[Nothing, TestEnvironment, Nothing, Any]] =
-    List(TestAspect.executionStrategy(ExecutionStrategy.Sequential))
+  override def aspects: Chunk[TestAspect[Nothing, TestEnvironment, Nothing, Any]] =
+    Chunk(TestAspect.executionStrategy(ExecutionStrategy.Sequential))
 }

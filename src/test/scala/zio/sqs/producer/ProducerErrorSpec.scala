@@ -1,14 +1,14 @@
 package zio.sqs.producer
 
 import zio.aws.sqs.model.BatchResultErrorEntry
-import zio.ExecutionStrategy
+import zio.{ Chunk, ExecutionStrategy }
 import zio.test.Assertion._
 import zio.test._
 import zio.test.TestEnvironment
 
-object ProducerErrorSpec extends DefaultRunnableSpec {
+object ProducerErrorSpec extends ZIOSpecDefault {
 
-  override def spec: ZSpec[TestEnvironment, Any] =
+  override def spec: Spec[TestEnvironment, Any] =
     suite("ProducerError")(
       test("it can be created from BatchResultErrorEntry") {
         val event    = ProducerEvent("e1")
@@ -34,6 +34,6 @@ object ProducerErrorSpec extends DefaultRunnableSpec {
       }
     )
 
-  override def aspects: List[TestAspect[Nothing, TestEnvironment, Nothing, Any]] =
-    List(TestAspect.executionStrategy(ExecutionStrategy.Sequential))
+  override def aspects: Chunk[TestAspect[Nothing, TestEnvironment, Nothing, Any]] =
+    Chunk(TestAspect.executionStrategy(ExecutionStrategy.Sequential))
 }

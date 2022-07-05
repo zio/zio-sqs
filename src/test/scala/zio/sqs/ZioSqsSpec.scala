@@ -3,9 +3,7 @@ package zio.sqs
 import zio.aws.sqs.Sqs
 import zio.aws.sqs.model.Message
 import zio._
-import zio.Clock
 import zio.durationInt
-import zio.Random
 import zio.sqs.ZioSqsMockServer._
 import zio.sqs.producer.{ Producer, ProducerEvent }
 import zio.sqs.serialization.Serializer
@@ -13,9 +11,9 @@ import zio.test.Assertion._
 import zio.test._
 import zio.test.{ Live, TestClock, TestEnvironment }
 
-object ZioSqsSpec extends DefaultRunnableSpec {
+object ZioSqsSpec extends ZIOSpecDefault {
 
-  def spec: ZSpec[TestEnvironment, Any] =
+  def spec: Spec[TestEnvironment, Any] =
     suite("ZioSqsSpec")(
       test("send messages") {
         val settings: SqsStreamSettings = SqsStreamSettings(stopWhenQueueEmpty = true)
@@ -60,17 +58,17 @@ object ZioSqsSpec extends DefaultRunnableSpec {
       }
     ).provideCustomLayerShared((zio.aws.netty.NettyHttpClient.default >>> zio.aws.core.config.AwsConfig.default >>> clientResource).orDie)
 
-  override def aspects: List[TestAspect[Nothing, TestEnvironment, Nothing, Any]] =
-    List(TestAspect.executionStrategy(ExecutionStrategy.Sequential))
+  override def aspects: Chunk[TestAspect[Nothing, TestEnvironment, Nothing, Any]] =
+    Chunk(TestAspect.executionStrategy(ExecutionStrategy.Sequential))
 
   private val queueName = "TestQueue"
 
-  val gen: Gen[Random with Sized, Chunk[String]] = Util.chunkOfStringsN(10)
+  val gen: Gen[Sized, Chunk[String]] = Util.chunkOfStringsN(10)
 
-  def withFastClock: ZIO[TestClock with Live, Nothing, Long] =
-    Live.withLive(TestClock.adjust(1.seconds))(_.repeat[ZEnv, Long](Schedule.spaced(10.millis)))
+  def withFastClock: ZIO[Live, Nothing, Long] =
+    Live.withLive(TestClock.adjust(1.seconds))(_.repeat[Live, Long](Schedule.spaced(10.millis)))
 
-  def sendAndGet(messages: Seq[String], settings: SqsStreamSettings): ZIO[TestClock with Live with Clock with Sqs, Throwable, Chunk[Message.ReadOnly]] =
+  def sendAndGet(messages: Seq[String], settings: SqsStreamSettings): ZIO[Live with Sqs, Throwable, Chunk[Message.ReadOnly]] =
     for {
       _                 <- withFastClock.fork
       _                 <- Utils.createQueue(queueName)

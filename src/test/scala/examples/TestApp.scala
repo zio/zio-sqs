@@ -4,7 +4,6 @@ import zio.aws.core.config.CommonAwsConfig
 import zio.aws.sqs.Sqs
 import software.amazon.awssdk.auth.credentials.{ AwsBasicCredentials, StaticCredentialsProvider }
 import software.amazon.awssdk.regions.Region
-import zio.Clock
 import zio.sqs.producer.{ Producer, ProducerEvent }
 import zio.sqs.serialization.Serializer
 import zio.sqs.{ SqsStream, SqsStreamSettings, Utils }
@@ -26,7 +25,7 @@ object TestApp extends zio.ZIOAppDefault {
       zio.aws.core.config.AwsConfig.configured() >>>
       zio.aws.sqs.Sqs.live
 
-  val program: RIO[Sqs with Clock, Unit] = for {
+  val program: RIO[Sqs, Unit] = for {
     _        <- Utils.createQueue(queueName)
     queueUrl <- Utils.getQueueUrl(queueName)
     producer  = Producer.make(queueUrl, Serializer.serializeString)
@@ -41,6 +40,6 @@ object TestApp extends zio.ZIOAppDefault {
                 ).foreach(msg => ZIO.succeed(println(msg.body)))
   } yield ()
 
-  override def run: URIO[zio.ZEnv, ExitCode] =
-    program.provideCustomLayer(client).exitCode
+  override def run: UIO[ExitCode] =
+    program.provide(client).exitCode
 }

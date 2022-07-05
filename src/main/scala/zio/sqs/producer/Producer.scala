@@ -102,7 +102,7 @@ object Producer {
     queueUrl: String,
     serializer: Serializer[T],
     settings: ProducerSettings = ProducerSettings()
-  ): ZIO[R with Clock with Sqs with Scope, Throwable, Producer[T]] = {
+  ): ZIO[R with Sqs with Scope, Throwable, Producer[T]] = {
     val eventQueueSize = nextPower2(settings.batchSize * settings.parallelism)
     for {
       eventQueue <- ZIO.acquireRelease(Queue.bounded[SqsRequestEntry[T]](eventQueueSize))(_.shutdown)
@@ -199,7 +199,7 @@ object Producer {
    */
   private[sqs] def runSendMessageBatchRequest[R, T](failedQueue: Queue[SqsRequestEntry[T]], retryDelay: Duration, retryMaxCount: Int)(
     req: SqsRequest[T]
-  ): RIO[R with Clock with Sqs, Unit] =
+  ): RIO[R with Sqs, Unit] =
     zio.aws.sqs.Sqs
       .sendMessageBatch(req.inner)
       .mapError(_.toThrowable)
@@ -212,7 +212,7 @@ object Producer {
         val (successful, retryable, errors) = responseMapper.tupled(responsePartitioner(res))
 
         for {
-          _ <- URIO.when(retryable.nonEmpty) {
+          _ <- ZIO.when(retryable.nonEmpty) {
                  failedQueue
                    .offerAll(retryable.map(it => it.copy(retryCount = it.retryCount + 1)))
                    .delay(retryDelay)

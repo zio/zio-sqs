@@ -3,15 +3,14 @@ package zio.sqs.producer
 import java.util.concurrent.TimeUnit
 
 import zio.aws.sqs.model.MessageAttributeValue
-import zio.ExecutionStrategy
-import zio.Duration
+import zio.{ Chunk, Duration, ExecutionStrategy }
 import zio.test.Assertion._
 import zio.test._
 import zio.test.TestEnvironment
 
-object ProducerEventSpec extends DefaultRunnableSpec {
+object ProducerEventSpec extends ZIOSpecDefault {
 
-  override def spec: ZSpec[TestEnvironment, Any] =
+  override def spec: Spec[TestEnvironment, Any] =
     suite("ProducerEvent")(
       test("it can be created") {
         val attr = MessageAttributeValue(Some("Jane"), dataType = "String")
@@ -42,6 +41,6 @@ object ProducerEventSpec extends DefaultRunnableSpec {
       }
     )
 
-  override def aspects: List[TestAspect[Nothing, TestEnvironment, Nothing, Any]] =
-    List(TestAspect.executionStrategy(ExecutionStrategy.Sequential))
+  override def aspects: Chunk[TestAspect[Nothing, TestEnvironment, Nothing, Any]] =
+    Chunk(TestAspect.executionStrategy(ExecutionStrategy.Sequential))
 }

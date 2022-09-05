@@ -117,7 +117,7 @@ object Producer {
                       )
                       .map(chunks => reqBuilder(chunks.toList))
                       .mapZIOParUnordered(settings.parallelism)(reqRunner)
-      _          <- stream.runDrain.fork
+      _          <- stream.runDrain.forkDaemon
     } yield new DefaultProducer[T](eventQueue, settings)
   }
 

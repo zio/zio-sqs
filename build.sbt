@@ -2,7 +2,7 @@ val mainScala = "2.13.8"
 val allScala  = Seq(mainScala, "2.12.16")
 
 organization := "dev.zio"
-homepage := Some(url("https://github.com/zio/zio-sqs"))
+homepage := Some(url("https://zio.dev/zio-sqs"))
 name := "zio-sqs"
 licenses := List("Apache-2.0" -> url("http://www.apache.org/licenses/LICENSE-2.0"))
 scalaVersion := mainScala
@@ -83,3 +83,13 @@ testFrameworks += new TestFramework("zio.test.sbt.ZTestFramework")
 
 addCommandAlias("fmt", "all scalafmtSbt scalafmt test:scalafmt")
 addCommandAlias("check", "all scalafmtSbtCheck scalafmtCheck test:scalafmtCheck")
+
+lazy val docs = project
+  .in(file("zio-sqs-docs"))
+  .settings(
+    publish / skip := true,
+    moduleName := "zio-sqs-docs",
+    scalacOptions -= "-Yno-imports",
+    scalacOptions -= "-Xfatal-warnings"
+  )
+  .enablePlugins(WebsitePlugin)

@@ -20,7 +20,7 @@ In order to use the connector, you need to provide your program with a configure
 
 ### Publish messages
 
-Use `Producer.make` to instantiate an instance of [Producer](src/main/scala/zio/sqs/producer/Producer.scala) trait that can be used to publish objects of type `T` to the queue.
+Use `Producer.make` to instantiate an instance of `Producer` trait that can be used to publish objects of type `T` to the queue.
 
 ```scala
 def make[R, T](
@@ -33,14 +33,15 @@ def make[R, T](
 where:
 
 - `queueUrl: String` - an SQS queue URL
-- `serializer: Serializer[T]` - a instance of [zio.sqs.serialization.Serializer](src/main/scala/zio/sqs/serialization/Serializer.scala) that can be used to convert an object of type `T` to a string.
+- `serializer: Serializer[T]` - an instance of `zio.sqs.serialization.Serializer` that can be used to convert an object of type `T` to a string.
+
   ```scala
     trait Serializer[T] {
       def apply(t: T): String
     }
   ```
   If a published message is already a string, `Serializer.serializeString` can be used.
-- `settings: ProducerSettings` - a set of [settings](src/main/scala/zio/sqs/producer/ProducerSettings.scala) used to configure the producer.
+- `settings: ProducerSettings` - a set of settings (`ProducerSettings`) used to configure the producer.
     - `batchSize: Int` - The size of the batch to use, [1-10] (default: 10).
     - `duration: Duration` - Time to wait for the batch to be full (have the specified batchSize) (default: 500 milliseconds).
     - `parallelism: Int` - The number of concurrent requests to make to SQS (default: 16).
@@ -50,7 +51,7 @@ where:
 
 #### Producer
 
-[Producer](src/main/scala/zio/sqs/producer/Producer.scala) contains two set of methods:
+`Producer` contains two set of methods:
 - methods that fail the resulting *Task* or *Stream* if SQS server returns an error for a published event.
     - `def produce(e: ProducerEvent[T]): Task[ProducerEvent[T]]` - Publishes a single event and fails the task.
       Fails the `Task` if the server returns an error.
@@ -72,13 +73,14 @@ If messages should be sent one by one and batching is not expected, set `Produce
 
 #### ProducerEvent
 
-[ProducerEvent[T]](src/main/scala/zio/sqs/producer/ProducerEvent.scala) is an event that is published to SQS and contains the following parameters that could be configured:
+`ProducerEvent[T]` is an event that is published to SQS and contains the following parameters that could be configured:
 - `data: T` - Object to publish to SQS. A serializer for this type should be provided when a `Producer` is instantiated.
 - `attributes: Map[String, MessageAttributeValue]` - A map of [attributes](https://docs.aws.amazon.com/AWSSimpleQueueService/latest/SQSDeveloperGuide/sqs-message-attributes.html) to set.
 - `groupId: Option[String]` - Assigns a specific [message group](https://docs.aws.amazon.com/AWSSimpleQueueService/latest/SQSDeveloperGuide/using-messagegroupid-property.html) to the message.
 - `deduplicationId: Option[String]` - Token used for [deduplication](https://docs.aws.amazon.com/AWSSimpleQueueService/latest/SQSDeveloperGuide/using-messagededuplicationid-property.html) of sent messages.
 
 If a plain string should be published without any additional attributes a `ProducerEvent` can be created directly:
+
 ```scala
 val str: String = "message to publish"
 val event: ProducerEvent = ProducerEvent(str)
@@ -86,7 +88,7 @@ val event: ProducerEvent = ProducerEvent(str)
 
 #### ProducerError
 
-[ProducerError[T]](src/main/scala/zio/sqs/producer/ProducerError.scala) represents an [error details]((https://docs.aws.amazon.com/AWSSimpleQueueService/latest/APIReference/API_BatchResultErrorEntry.html)) that were returned from the server.
+`ProducerError[T]` represents an [error details]((https://docs.aws.amazon.com/AWSSimpleQueueService/latest/APIReference/API_BatchResultErrorEntry.html)) that were returned from the server.
 - `senderFault: Boolean` - Specifies whether the error happened due to the caller of the batch API action.
 - `code: String` - An error code representing why the action failed on this entry.
 - `message: Option[String]` - A message explaining why the action failed on this entry.

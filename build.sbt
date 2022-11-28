@@ -1,5 +1,5 @@
 val mainScala = "2.13.8"
-val allScala  = Seq(mainScala, "2.12.16", "3.2.1")
+val allScala = Seq(mainScala, "2.12.16", "3.2.1")
 
 organization := "dev.zio"
 homepage := Some(url("https://zio.dev/zio-sqs"))
@@ -36,8 +36,10 @@ libraryDependencies ++= Seq(
   "org.scala-lang.modules" %% "scala-collection-compat" % "2.8.0",
   "dev.zio"                %% "zio-test"                % zioVersion % "test",
   "dev.zio"                %% "zio-test-sbt"            % zioVersion % "test",
-  "org.elasticmq"          %% "elasticmq-rest-sqs"      % "0.15.6"   % "test",
-  "org.elasticmq"          %% "elasticmq-core"          % "0.15.6"   % "test",
+
+  "com.dimafeng" %% "testcontainers-scala" % "0.40.11",
+  "com.dimafeng" %% "testcontainers-scala-localstack-v2" % "0.40.11",
+
   compilerPlugin("org.typelevel" %% "kind-projector"     % "0.10.3"),
   compilerPlugin("com.olegpy"    %% "better-monadic-for" % "0.3.1")
 )

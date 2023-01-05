@@ -1,6 +1,14 @@
 const sidebars = {
   sidebar: [
-    "index"
+    {
+      type: "category",
+      label: "ZIO SQS",
+      collapsed: false,
+      link: { type: "doc", id: "index" },
+      items: [
+        "how-to-use"
+      ]
+    }
   ]
 };
 

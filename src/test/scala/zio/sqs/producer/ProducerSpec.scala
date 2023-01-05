@@ -599,6 +599,26 @@ object ProducerSpec extends ZIOSpecDefault {
           assert(successes.collect({ case Right(x) => x.data }))(hasSameElements(List("C", "E"))) &&
           assert(failures.size)(equalTo(3))
         }
+      },
+      test("Producer works when created in separate fiber") {
+        val queueName                  = "produceBatch-" + UUID.randomUUID().toString
+        val queueUrl                   = s"sqs://$queueName"
+        val settings: ProducerSettings = ProducerSettings()
+        val events                     = List("B1").map(ProducerEvent(_))
+        val client                     = failUnrecoverableClient
+
+        for {
+          _               <- withFastClock.fork
+          scope           <- Scope.make
+          producerPromise <- Producer
+                               .make[Any, String](queueUrl, Serializer.serializeString, settings)
+                               .provide(client, ZLayer.succeed(scope))
+                               .fork
+
+          producer        <- producerPromise.await.flatten
+
+          errOrResults <- producer.produceBatch(events).either
+        } yield assert(errOrResults.isLeft)(isTrue)
       }
     ).provideCustomLayerShared((zio.aws.netty.NettyHttpClient.default >>> zio.aws.core.config.AwsConfig.default >>> clientResource).orDie)
 

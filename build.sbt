@@ -46,7 +46,7 @@ lazy val sqs =
         "dev.zio"                %% "zio-streams"             % zioVersion,
         "dev.zio"                %% "zio-aws-sqs"             % zioAwsVersion,
         "dev.zio"                %% "zio-aws-netty"           % zioAwsVersion,
-        "org.scala-lang.modules" %% "scala-collection-compat" % "2.8.0",
+        "org.scala-lang.modules" %% "scala-collection-compat" % "2.8.1",
         "dev.zio"                %% "zio-test"                % zioVersion % "test",
         "dev.zio"                %% "zio-test-sbt"            % zioVersion % "test",
         "org.elasticmq"          %% "elasticmq-rest-sqs"      % "0.15.6"   % "test",

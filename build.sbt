@@ -86,11 +86,23 @@ lazy val sqs =
           )
         case _             => Nil
       }),
-      testFrameworks += new TestFramework("zio.test.sbt.ZTestFramework"),
-      projectName := "ZIO SQS",
-      mainModuleName := name.value,
-      projectStage := ProjectStage.ProductionReady,
-      docsPublishBranch := "series/2.x",
-      ScalaUnidoc / unidoc / unidocProjectFilter := inAnyProject
+      testFrameworks += new TestFramework("zio.test.sbt.ZTestFramework")
     )
-    .enablePlugins(WebsitePlugin)
+    .aggregate(docs)
+
+lazy val docs = project
+  .in(file("zio-sqs-docs"))
+  .settings(
+    moduleName := "zio-sqs-docs",
+    scalacOptions -= "-Yno-imports",
+    scalacOptions -= "-Xfatal-warnings",
+    projectName := "ZIO SQS",
+    mainModuleName := "zio-sqs",
+    projectStage := ProjectStage.ProductionReady,
+    docsPublishBranch := "series/2.x",
+    ScalaUnidoc / unidoc / unidocProjectFilter := inAnyProject,
+    libraryDependencies ++= Seq(
+      "dev.zio" %% "zio" % zioVersion
+    )
+  )
+  .enablePlugins(WebsitePlugin)

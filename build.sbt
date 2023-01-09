@@ -35,9 +35,19 @@ publishTo := sonatypePublishToBundle.value
 addCommandAlias("fmt", "all scalafmtSbt scalafmt test:scalafmt")
 addCommandAlias("check", "all scalafmtSbtCheck scalafmtCheck test:scalafmtCheck")
 
+lazy val root = project
+  .in(file("."))
+  .settings(
+    publish / skip := true
+  )
+  .aggregate(
+    sqs,
+    docs
+  )
+
 lazy val sqs =
   project
-    .in(file("."))
+    .in(file("zio-sqs"))
     .settings(
       name := "zio-sqs",
       scalafmtOnCompile := true,
@@ -88,7 +98,6 @@ lazy val sqs =
       }),
       testFrameworks += new TestFramework("zio.test.sbt.ZTestFramework")
     )
-    .aggregate(docs)
 
 lazy val docs = project
   .in(file("zio-sqs-docs"))
@@ -97,12 +106,13 @@ lazy val docs = project
     scalacOptions -= "-Yno-imports",
     scalacOptions -= "-Xfatal-warnings",
     projectName := "ZIO SQS",
-    mainModuleName := "zio-sqs",
+    mainModuleName := (sqs / moduleName).value,
     projectStage := ProjectStage.ProductionReady,
     docsPublishBranch := "series/2.x",
-    ScalaUnidoc / unidoc / unidocProjectFilter := inAnyProject,
+    ScalaUnidoc / unidoc / unidocProjectFilter := inProjects(sqs),
     libraryDependencies ++= Seq(
       "dev.zio" %% "zio" % zioVersion
     )
   )
+  .dependsOn(sqs)
   .enablePlugins(WebsitePlugin)

@@ -51,9 +51,14 @@ lazy val sqs =
         "dev.zio"                %% "zio-test-sbt"            % zioVersion % "test",
         "org.elasticmq" %% "elasticmq-rest-sqs" % "1.3.7" % "test" cross CrossVersion.for3Use2_13,
         "org.elasticmq" %% "elasticmq-core" % "1.3.7" % "test" cross CrossVersion.for3Use2_13,
-        compilerPlugin("org.typelevel" %% "kind-projector"     % "0.10.3"),
-        compilerPlugin("com.olegpy"    %% "better-monadic-for" % "0.3.1")
-      ),
+      ) ++ (CrossVersion.partialVersion(scalaVersion.value) match {
+        case Some((2, 12)) =>
+            Seq("org.typelevel" %% "kind-projector"     % "0.10.3")
+        case Some((2, 13)) =>
+            Seq("org.typelevel" %% "kind-projector"     % "0.10.3")
+        case _ =>
+            Nil
+    }),
       scalacOptions ++= Seq(
         "-deprecation",
         "-encoding",

@@ -1,5 +1,5 @@
-val mainScala     = "2.13.8"
-val allScala      = Seq(mainScala, "2.12.16")
+val mainScala     = "2.13.10"
+val allScala      = Seq("3.2.1", "2.13.10", "2.12.16")
 val zioVersion    = "2.0.0"
 val zioAwsVersion = "5.17.224.4"
 
@@ -49,30 +49,26 @@ lazy val sqs =
         "org.scala-lang.modules" %% "scala-collection-compat" % "2.8.0",
         "dev.zio"                %% "zio-test"                % zioVersion % "test",
         "dev.zio"                %% "zio-test-sbt"            % zioVersion % "test",
-        "org.elasticmq"          %% "elasticmq-rest-sqs"      % "0.15.6"   % "test",
-        "org.elasticmq"          %% "elasticmq-core"          % "0.15.6"   % "test",
-        compilerPlugin("org.typelevel" %% "kind-projector"     % "0.10.3"),
-        compilerPlugin("com.olegpy"    %% "better-monadic-for" % "0.3.1")
+        "org.elasticmq" %% "elasticmq-rest-sqs" % "1.3.7" % "test" cross CrossVersion.for3Use2_13,
+        "org.elasticmq" %% "elasticmq-core" % "1.3.7" % "test" cross CrossVersion.for3Use2_13,
+       // compilerPlugin("org.typelevel" %% "kind-projector"     % "0.10.3"),
+       // compilerPlugin("com.olegpy"    %% "better-monadic-for" % "0.3.1")
       ),
       scalacOptions ++= Seq(
         "-deprecation",
         "-encoding",
         "UTF-8",
         "-explaintypes",
-        "-Yrangepos",
         "-feature",
         "-language:higherKinds",
         "-language:existentials",
         "-unchecked",
-        "-Xlint:_,-type-parameter-shadow",
-        "-Ywarn-numeric-widen",
-        "-Ywarn-unused",
-        "-Ywarn-value-discard"
       ) ++ (CrossVersion.partialVersion(scalaVersion.value) match {
         case Some((2, 12)) =>
           Seq(
             "-Xfuture",
             "-Xsource:2.13",
+            "-Xlint:_,-type-parameter-shadow",
             "-Yno-adapted-args",
             "-Ypartial-unification",
             "-Ywarn-extra-implicit",
@@ -80,11 +76,25 @@ lazy val sqs =
             "-Ywarn-infer-any",
             "-Ywarn-nullary-override",
             "-Ywarn-nullary-unit",
+            "-Yrangepos",
+            "-Ywarn-numeric-widen",
+            "-Ywarn-unused",
+            "-Ywarn-value-discard",
             "-opt-inline-from:<source>",
             "-opt-warnings",
-            "-opt:l:inline"
+            "-opt:l:inline",
           )
-        case _             => Nil
+        case Some((2,13))  => Seq(
+            "-Xlint:_,-type-parameter-shadow",
+            "-Werror",
+            "-Yrangepos",
+            "-Ywarn-numeric-widen",
+            "-Ywarn-unused",
+            "-Ywarn-value-discard",
+        ) 
+        case Some((3,2)) => Seq(
+        )
+        case _ => Nil
       }),
       testFrameworks += new TestFramework("zio.test.sbt.ZTestFramework")
     )

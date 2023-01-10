@@ -69,7 +69,6 @@ lazy val sqs =
         case _ =>
             Nil
     }),
-      ),
       scalacOptions ++= Seq(
         "-deprecation",
         "-encoding",

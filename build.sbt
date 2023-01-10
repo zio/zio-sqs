@@ -51,8 +51,8 @@ lazy val sqs =
         "dev.zio"                %% "zio-test-sbt"            % zioVersion % "test",
         "org.elasticmq" %% "elasticmq-rest-sqs" % "1.3.7" % "test" cross CrossVersion.for3Use2_13,
         "org.elasticmq" %% "elasticmq-core" % "1.3.7" % "test" cross CrossVersion.for3Use2_13,
-       // compilerPlugin("org.typelevel" %% "kind-projector"     % "0.10.3"),
-       // compilerPlugin("com.olegpy"    %% "better-monadic-for" % "0.3.1")
+        compilerPlugin("org.typelevel" %% "kind-projector"     % "0.10.3"),
+        compilerPlugin("com.olegpy"    %% "better-monadic-for" % "0.3.1")
       ),
       scalacOptions ++= Seq(
         "-deprecation",
@@ -92,8 +92,7 @@ lazy val sqs =
             "-Ywarn-unused",
             "-Ywarn-value-discard",
         ) 
-        case Some((3,2)) => Seq(
-        )
+        case Some((3,2)) => Nil 
         case _ => Nil
       }),
       testFrameworks += new TestFramework("zio.test.sbt.ZTestFramework")

@@ -59,8 +59,8 @@ lazy val sqs =
         "org.scala-lang.modules" %% "scala-collection-compat" % "2.8.0",
         "dev.zio"                %% "zio-test"                % zioVersion % "test",
         "dev.zio"                %% "zio-test-sbt"            % zioVersion % "test",
-        "org.elasticmq"          %% "elasticmq-rest-sqs"      % "0.15.6"   % "test",
-        "org.elasticmq"          %% "elasticmq-core"          % "0.15.6"   % "test",
+        "org.elasticmq"          %% "elasticmq-rest-sqs"      % "1.3.7"    % "test",
+        "org.elasticmq"          %% "elasticmq-core"          % "1.3.7"    % "test",
         compilerPlugin("org.typelevel" %% "kind-projector"     % "0.10.3"),
         compilerPlugin("com.olegpy"    %% "better-monadic-for" % "0.3.1")
       ),

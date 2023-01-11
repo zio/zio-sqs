@@ -628,7 +628,7 @@ object ProducerSpec extends ZIOSpecDefault {
   def queueResource(capacity: Int): ZIO[Scope, Throwable, Queue[SqsRequestEntry[String]]] =
     ZIO.acquireRelease(Queue.bounded[SqsRequestEntry[String]](capacity))(_.shutdown)
 
-  def withFastClock: ZIO[Live, Nothing, Long] =
+  def withFastClock: ZIO[Live, Any, Long] =
     Live.withLive(TestClock.adjust(1.seconds))(_.repeat[Live, Long](Schedule.spaced(10.millis)))
 
   /**
@@ -649,8 +649,7 @@ object ProducerSpec extends ZIOSpecDefault {
   }
 }
 
-class StubSqsService extends Sqs {
-  override lazy val api: SqsAsyncClient                                                                                                                      = ???
+case class StubSqsService(api: SqsAsyncClient = null) extends Sqs {
   override def getQueueAttributes(request: model.GetQueueAttributesRequest): IO[AwsError, GetQueueAttributesResponse.ReadOnly]                               = ???
   override def sendMessage(request: model.SendMessageRequest): IO[AwsError, SendMessageResponse.ReadOnly]                                                    = ???
   override def listQueues(request: model.ListQueuesRequest): ZStream[Any, AwsError, String]                                                                  = ???

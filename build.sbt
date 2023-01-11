@@ -1,4 +1,4 @@
-val mainScala     = "2.13.10"
+val mainScala     = "3.2.1"
 val allScala      = Seq("3.2.1", "2.13.10", "2.12.16")
 val zioVersion    = "2.0.0"
 val zioAwsVersion = "5.17.224.4"
@@ -63,12 +63,12 @@ lazy val sqs =
         "org.elasticmq"          %% "elasticmq-core"          % "1.3.7"    % "test" cross CrossVersion.for3Use2_13
       ) ++ (CrossVersion.partialVersion(scalaVersion.value) match {
         case Some((2, 12)) =>
-            Seq("org.typelevel" %% "kind-projector"     % "0.10.3")
+          Seq("org.typelevel" %% "kind-projector" % "0.10.3")
         case Some((2, 13)) =>
-            Seq("org.typelevel" %% "kind-projector"     % "0.10.3")
-        case _ =>
-            Nil
-    }),
+          Seq("org.typelevel" %% "kind-projector" % "0.10.3")
+        case _             =>
+          Nil
+      }),
       scalacOptions ++= Seq(
         "-deprecation",
         "-encoding",
@@ -106,9 +106,9 @@ lazy val sqs =
             "-Yrangepos",
             "-Ywarn-numeric-widen",
             "-Ywarn-unused",
-            "-Ywarn-value-discard",
-        ) 
-        case _ => Nil
+            "-Ywarn-value-discard"
+          )
+        case _             => Nil
       }),
       testFrameworks += new TestFramework("zio.test.sbt.ZTestFramework")
     )

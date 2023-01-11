@@ -107,7 +107,6 @@ lazy val sqs =
             "-Ywarn-unused",
             "-Ywarn-value-discard",
         ) 
-        case Some((3,2)) => Nil 
         case _ => Nil
       }),
       testFrameworks += new TestFramework("zio.test.sbt.ZTestFramework")

@@ -35,9 +35,19 @@ publishTo := sonatypePublishToBundle.value
 addCommandAlias("fmt", "all scalafmtSbt scalafmt test:scalafmt")
 addCommandAlias("check", "all scalafmtSbtCheck scalafmtCheck test:scalafmtCheck")
 
+lazy val root = project
+  .in(file("."))
+  .settings(
+    publish / skip := true
+  )
+  .aggregate(
+    sqs,
+    docs
+  )
+
 lazy val sqs =
   project
-    .in(file("."))
+    .in(file("zio-sqs"))
     .settings(
       name := "zio-sqs",
       scalafmtOnCompile := true,
@@ -49,8 +59,8 @@ lazy val sqs =
         "org.scala-lang.modules" %% "scala-collection-compat" % "2.8.0",
         "dev.zio"                %% "zio-test"                % zioVersion % "test",
         "dev.zio"                %% "zio-test-sbt"            % zioVersion % "test",
-        "org.elasticmq"          %% "elasticmq-rest-sqs"      % "0.15.6"   % "test",
-        "org.elasticmq"          %% "elasticmq-core"          % "0.15.6"   % "test",
+        "org.elasticmq"          %% "elasticmq-rest-sqs"      % "1.3.7"    % "test",
+        "org.elasticmq"          %% "elasticmq-core"          % "1.3.7"    % "test",
         compilerPlugin("org.typelevel" %% "kind-projector"     % "0.10.3"),
         compilerPlugin("com.olegpy"    %% "better-monadic-for" % "0.3.1")
       ),
@@ -92,18 +102,14 @@ lazy val sqs =
 lazy val docs = project
   .in(file("zio-sqs-docs"))
   .settings(
-    publish / skip := true,
     moduleName := "zio-sqs-docs",
     scalacOptions -= "-Yno-imports",
     scalacOptions -= "-Xfatal-warnings",
     projectName := "ZIO SQS",
-    badgeInfo := Some(
-      BadgeInfo(
-        artifact = "zio-sqs_2.12",
-        projectStage = ProjectStage.ProductionReady
-      )
-    ),
+    mainModuleName := (sqs / moduleName).value,
+    projectStage := ProjectStage.ProductionReady,
     docsPublishBranch := "series/2.x",
+    ScalaUnidoc / unidoc / unidocProjectFilter := inProjects(sqs),
     libraryDependencies ++= Seq(
       "dev.zio" %% "zio" % zioVersion
     )

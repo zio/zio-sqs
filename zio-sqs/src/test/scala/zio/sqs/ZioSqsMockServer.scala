@@ -1,15 +1,17 @@
 package zio.sqs
 
 import java.net.URI
-
 import zio.aws.core.config.AwsConfig
 import zio.aws.sqs.Sqs
-import org.elasticmq.rest.sqs.{ SQSRestServer, SQSRestServerBuilder }
+import org.elasticmq.rest.sqs.SQSRestServer
+import org.elasticmq.RelaxedSQSLimits
+import org.elasticmq.rest.sqs.TheSQSRestServerBuilder
+import org.elasticmq.NodeAddress
 import software.amazon.awssdk.auth.credentials.{ AwsBasicCredentials, StaticCredentialsProvider }
 import software.amazon.awssdk.regions.Region
 import zio.{ Scope, ZIO, ZLayer }
 
-object ZioSqsMockServer {
+object ZioSqsMockServer extends TheSQSRestServerBuilder(None, None, "", 9324, NodeAddress(), true, RelaxedSQSLimits, "elasticmq", "000000000000", None) {
   private val staticCredentialsProvider: StaticCredentialsProvider =
     StaticCredentialsProvider.create(AwsBasicCredentials.create("key", "key"))
   private val uri                                                  = new URI("http://localhost:9324")
@@ -17,7 +19,7 @@ object ZioSqsMockServer {
 
   val serverResource: ZIO[Any with Scope, Throwable, SQSRestServer] =
     ZIO.acquireRelease(
-      ZIO.attempt(SQSRestServerBuilder.start())
+      ZIO.attempt(this.start())
     )(server => ZIO.succeed(server.stopAndWait()))
 
   val clientResource: ZLayer[AwsConfig, Throwable, Sqs] =

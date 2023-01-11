@@ -1,4 +1,4 @@
-val mainScala     = "3.2.1"
+val mainScala     = "2.3.10"
 val allScala      = Seq("3.2.1", "2.13.10", "2.12.16")
 val zioVersion    = "2.0.0"
 val zioAwsVersion = "5.17.224.4"

@@ -59,8 +59,8 @@ lazy val sqs =
         "org.scala-lang.modules" %% "scala-collection-compat" % "2.8.0",
         "dev.zio"                %% "zio-test"                % zioVersion % "test",
         "dev.zio"                %% "zio-test-sbt"            % zioVersion % "test",
-        "org.elasticmq" %% "elasticmq-rest-sqs" % "1.3.7" % "test" cross CrossVersion.for3Use2_13,
-        "org.elasticmq" %% "elasticmq-core" % "1.3.7" % "test" cross CrossVersion.for3Use2_13,
+        "org.elasticmq"          %% "elasticmq-rest-sqs"      % "1.3.7"    % "test" cross CrossVersion.for3Use2_13,
+        "org.elasticmq"          %% "elasticmq-core"          % "1.3.7"    % "test" cross CrossVersion.for3Use2_13
       ) ++ (CrossVersion.partialVersion(scalaVersion.value) match {
         case Some((2, 12)) =>
             Seq("org.typelevel" %% "kind-projector"     % "0.10.3")
@@ -77,7 +77,7 @@ lazy val sqs =
         "-feature",
         "-language:higherKinds",
         "-language:existentials",
-        "-unchecked",
+        "-unchecked"
       ) ++ (CrossVersion.partialVersion(scalaVersion.value) match {
         case Some((2, 12)) =>
           Seq(
@@ -97,9 +97,10 @@ lazy val sqs =
             "-Ywarn-value-discard",
             "-opt-inline-from:<source>",
             "-opt-warnings",
-            "-opt:l:inline",
+            "-opt:l:inline"
           )
-        case Some((2,13))  => Seq(
+        case Some((2, 13)) =>
+          Seq(
             "-Xlint:_,-type-parameter-shadow",
             "-Werror",
             "-Yrangepos",

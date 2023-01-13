@@ -11,3 +11,5 @@ tags
 *.class
 *.log
 .bsp
+project/metals.sbt
+project/project

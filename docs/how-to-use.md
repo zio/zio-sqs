@@ -75,7 +75,7 @@ val event: ProducerEvent = ProducerEvent(str)
 
 ### ProducerError
 
-`ProducerError[T]` represents an [error details]((https://docs.aws.amazon.com/AWSSimpleQueueService/latest/APIReference/API_BatchResultErrorEntry.html)) that were returned from the server.
+`ProducerError[T]` represents an [error details](https://docs.aws.amazon.com/AWSSimpleQueueService/latest/APIReference/API_BatchResultErrorEntry.html) that were returned from the server.
 - `senderFault: Boolean` - Specifies whether the error happened due to the caller of the batch API action.
 - `code: String` - An error code representing why the action failed on this entry.
 - `message: Option[String]` - A message explaining why the action failed on this entry.

@@ -39,7 +39,11 @@ object SqsStream {
 
   /**
    * Wraps the messages in a scoped ZIO that will delete the message from the queue only if the ZIO succeeds.
-   * Lower level api, e.g. when you want to batch-process messages, or expose parsed messages to your users.
+   * WARNING: Do NOT do .mapZIO(identity) unless the stream is short-lived, as this will only delete the messages when the stream is closed.
+   * Lower level api for more advanced use cases, e.g.:
+   * - batch-process messages, deleting all messages when the batch succeeds: .rechunk(1000).chunks.map(chunk => ZIO.foreach(chunk)(identity).parallelFinalizers)
+   * - expose parsed messages to your users: .map(_.flatMap(_.getBody).flatMap(parseBody))
+   *
    * Use `processMessages` for the common case.
    */
   def deletingOnSuccess(

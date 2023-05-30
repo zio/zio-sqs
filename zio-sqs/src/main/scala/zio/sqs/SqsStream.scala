@@ -3,7 +3,7 @@ package zio.sqs
 import zio.aws.sqs._
 import zio.aws.sqs.model._
 import zio._
-import zio.stream.ZStream
+import zio.stream._
 import zio.aws.sqs.model.primitives.MessageAttributeName
 
 object SqsStream {
@@ -38,6 +38,36 @@ object SqsStream {
     zio.aws.sqs.Sqs.deleteMessage(DeleteMessageRequest(queueUrl, msg.receiptHandle.getOrElse(""))).mapError(_.toThrowable)
 
   /**
+   * Wraps the messages in a scoped ZIO that will delete the message from the queue only if the ZIO succeeds.
+   * Lower level api, e.g. when you want to batch-process messages, or expose parsed messages to your users.
+   * Use `processMessages` for the common case.
+   */
+  def deletingOnSuccess(
+    url: String,
+    settings: SqsStreamSettings = SqsStreamSettings(),
+    deleteRetrySchedule: Schedule[Any, Any, Any] = defaultDeleteRetryPolicy
+  ): ZStream[Sqs, Throwable, ZIO[Scope, Nothing, Message.ReadOnly]] =
+    SqsStream(url, settings).mapZIO { msg: Message.ReadOnly =>
+      ZIO.serviceWith[Sqs] { sqs =>
+        ZIO.succeedNow(msg).withFinalizerExit { (msg, exit) =>
+          exit match {
+            case Exit.Success(_) =>
+              SqsStream
+                .deleteMessage(url, msg)
+                .provideEnvironment(ZEnvironment(sqs))
+                // Retry in case it fails to delete transiently
+                .retry(deleteRetrySchedule)
+                // Die if it fails and stop the stream, to avoid reprocessing validly processed messages
+                // This would be very rare and caught early in testing.
+                .orDie
+            case Exit.Failure(_) =>
+              ZIO.unit
+          }
+        }
+      }
+    }
+
+  /**
    * Processes SQS messages from the queue using a given function and
    * deletes the messages from the queue only if they processed successfully.
    * This ensures that no message is lost in case of an error.
@@ -64,22 +94,16 @@ object SqsStream {
     settings: SqsStreamSettings,
     parallelism: Int = 1,
     deleteRetrySchedule: Schedule[Any, Any, Any] = defaultDeleteRetryPolicy
-  )(process: Message.ReadOnly => ZIO[Any, E, A]): ZStream[Sqs, Throwable, Either[(Message.ReadOnly, Cause[E]), A]] =
-    zio.sqs
-      .SqsStream(url, settings)
-      // Unordered since SQS (and queues in general) don't have ordering semantics
-      .mapZIOParUnordered(parallelism) { msg =>
-        process(msg)
-        // Capture any errors and defects
-        .sandbox.zipLeft {
-          SqsStream
-            .deleteMessage(url, msg)
-            // Retry in case it fails to delete transiently
-            .retry(deleteRetrySchedule)
-            // Die if it fails and stop the stream, to avoid reprocessing validly processed messages
-            // This would be very rare and caught early in testing.
-            .orDie
-        }.mapError(err => (msg, err)).either // Move the error to the return value, so that it doesn't stop the stream
+  )(process: Message.ReadOnly => ZIO[Any, E, A]): ZStream[Sqs, Throwable, Either[Cause[E], A]] =
+    zio.sqs.SqsStream
+      .deletingOnSuccess(url, settings, deleteRetrySchedule)
+      .mapZIOPar(parallelism) { msg =>
+        ZIO
+          .scoped[Any] {
+            msg.flatMap(process)
+          }
+          .sandbox // Capture any errors and defects
+          .either // Move the error to the return value, so that it doesn't stop the stream
       }
 
   private val defaultDeleteRetryPolicy: Schedule[Any, Any, Any] =

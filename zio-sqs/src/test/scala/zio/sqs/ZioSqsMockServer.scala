@@ -10,7 +10,7 @@ import org.elasticmq.NodeAddress
 import software.amazon.awssdk.auth.credentials.{ AwsBasicCredentials, StaticCredentialsProvider }
 import software.amazon.awssdk.regions.Region
 import zio.aws.netty.NettyHttpClient
-import zio.{ Scope, ZIO, ZLayer }
+import zio._
 
 object ZioSqsMockServer extends TheSQSRestServerBuilder(None, None, "", 9324, NodeAddress(), true, RelaxedSQSLimits, "elasticmq", "000000000000", None) {
   private val staticCredentialsProvider: StaticCredentialsProvider =
@@ -38,6 +38,15 @@ object MockSqsServerAndClient {
   lazy val layer: ZLayer[Any, Throwable, Sqs] =
     (NettyHttpClient.default ++ mockServer) >>> AwsConfig.configured() >>> zio.aws.sqs.Sqs.live
 
+  private val usedPorts = Ref.unsafe.make(Set.empty[Int])(Unsafe.unsafe)
+
+  private val getUnusedPort: ZIO[Scope, Throwable, Int] = ZIO
+    .randomWith(_.nextIntBetween(9000, 50000))
+    .repeatUntilZIO(port => usedPorts.get.map(!_.contains(port)))
+    .tap(port => usedPorts.update(_ + port))
+    .withFinalizer(port => usedPorts.update(_ - port))
+    .timeoutFail(new Exception("Could not find unused port"))(1.seconds)
+
   private lazy val mockServer: ZLayer[Any, Throwable, CommonAwsConfig] = {
     val dummyAwsKeys =
       StaticCredentialsProvider.create(AwsBasicCredentials.create("key", "key"))
@@ -45,7 +54,7 @@ object MockSqsServerAndClient {
     ZLayer.scoped {
       for {
         // Random port to allow parallel tests
-        port          <- ZIO.randomWith(_.nextIntBetween(9000, 50000))
+        port          <- getUnusedPort
         serverBuilder <- ZIO.attempt(
                            TheSQSRestServerBuilder(
                              providedActorSystem = None,

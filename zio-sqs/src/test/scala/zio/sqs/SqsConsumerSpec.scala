@@ -32,8 +32,7 @@ object SqsConsumerSpec extends ZIOSpecDefault {
           failures  = messages.collect { case Left(v) => v }
         } yield assertTrue(
           successes == Chunk(1, 2),
-          failures.length == 3, // It is retried multiple times
-          failures.map(_._1.body.toOption.get).distinct.length == 1
+          failures.length == 3 // It is retried multiple times
         )
       }
     ).provideLayer(MockSqsServerAndClient.layer)

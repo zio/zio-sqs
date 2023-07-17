@@ -3,24 +3,24 @@ package zio.sqs
 import zio.aws.sqs.Sqs
 import zio.aws.sqs.model.Message
 import zio._
-import zio.durationInt
 import zio.sqs.ZioSqsMockServer._
 import zio.sqs.producer.{ Producer, ProducerEvent }
 import zio.sqs.serialization.Serializer
 import zio.test.Assertion._
 import zio.test._
-import zio.test.{ Live, TestClock, TestEnvironment }
+import zio.test.{ Live, TestEnvironment }
+import testing._
 
 object ZioSqsSpec extends ZIOSpecDefault {
 
-  def spec: Spec[TestEnvironment, Any] =
+  override def spec =
     suite("ZioSqsSpec")(
       test("send messages") {
         val settings: SqsStreamSettings = SqsStreamSettings(stopWhenQueueEmpty = true)
 
         for {
           messages <- gen.runHead.someOrFailException
-          list     <- ZIO.scoped(serverResource.flatMap(_ => sendAndGet(messages, settings)))
+          list     <- ZIO.scoped(serverResource *> (sendAndGet(messages, settings)))
 
         } yield assert(list.map(_.body.getOrElse("")))(equalTo(messages))
       },
@@ -31,7 +31,7 @@ object ZioSqsSpec extends ZIOSpecDefault {
         for {
           messages <- gen.runHead.someOrFailException
           list     <- ZIO.scoped {
-                        serverResource.flatMap { _ =>
+                        serverResource *> {
                           for {
                             messageFromQueue <- sendAndGet(messages, settings)
                             list             <- deleteAndGet(messageFromQueue, settings)
@@ -47,7 +47,7 @@ object ZioSqsSpec extends ZIOSpecDefault {
         for {
           messages <- gen.runHead.someOrFailException
           list     <- ZIO.scoped {
-                        serverResource.flatMap { _ =>
+                        serverResource *> {
                           for {
                             _    <- sendAndGet(messages, settings)
                             list <- get(settings)
@@ -56,17 +56,14 @@ object ZioSqsSpec extends ZIOSpecDefault {
                       }
         } yield assert(list)(isEmpty)
       }
-    ).provideCustomLayerShared((zio.aws.netty.NettyHttpClient.default >>> zio.aws.core.config.AwsConfig.default >>> clientResource).orDie)
+    ).provideSomeLayerShared[TestEnvironment]((zio.aws.netty.NettyHttpClient.default >>> zio.aws.core.config.AwsConfig.default >>> clientResource).orDie)
 
   override def aspects: Chunk[TestAspect[Nothing, TestEnvironment, Nothing, Any]] =
     Chunk(TestAspect.executionStrategy(ExecutionStrategy.Sequential))
 
   private val queueName = "TestQueue"
 
-  val gen: Gen[Sized, Chunk[String]] = Util.chunkOfStringsN(10)
-
-  def withFastClock: ZIO[Live, Any, Long] =
-    Live.withLive(TestClock.adjust(1.seconds))(_.repeat[Live, Long](Schedule.spaced(10.millis)))
+  val gen: Gen[Sized, Chunk[String]] = chunkOfStringsN(10)
 
   def sendAndGet(messages: Seq[String], settings: SqsStreamSettings): ZIO[Live with Sqs, Throwable, Chunk[Message.ReadOnly]] =
     for {

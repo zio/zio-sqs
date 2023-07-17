@@ -11,12 +11,13 @@ import zio.durationInt
 import zio.sqs.ZioSqsMockServer._
 import zio.sqs.producer.Producer.{ DefaultProducer, SqsRequest, SqsRequestEntry, SqsResponseErrorEntry }
 import zio.sqs.serialization.Serializer
-import zio.sqs.{ Util, Utils }
+import zio.sqs.Utils
 import zio.stream.{ ZSink, ZStream }
 import zio.test.Assertion._
 import zio.test._
-import zio.test.{ Live, TestClock, TestEnvironment }
+//import zio.test.{ Live, TestClock, TestEnvironment }
 import zio.{ test => _, _ }
+import zio.sqs.testing._
 
 import scala.language.implicitConversions
 
@@ -25,7 +26,7 @@ object ProducerSpec extends ZIOSpecDefault {
   implicit def sendMessageBatchResponseAsReadOnly(e: SendMessageBatchResponse): SendMessageBatchResponse.ReadOnly =
     SendMessageBatchResponse.wrap(e.buildAwsValue())
 
-  def spec: Spec[TestEnvironment, Any] =
+  def spec =
     suite("Producer")(
       test("nextPower2 can be calculated") {
         assert(Producer.nextPower2(0))(equalTo(0)) &&
@@ -193,9 +194,8 @@ object ProducerSpec extends ZIOSpecDefault {
         val eventCount                 = settings.batchSize
         ZIO.scoped {
           for {
-            events     <- Util.chunkOfStringsN(eventCount)
-                            .sample
-                            .map(_.get.value.map(ProducerEvent(_)))
+            events     <- chunkOfStringsN(eventCount).sample
+                            .map(_.value.map(ProducerEvent(_)))
                             .run(ZSink.head[Chunk[ProducerEvent[String]]])
                             .someOrFailException
             retryQueue <- queueResource(16)
@@ -223,10 +223,8 @@ object ProducerSpec extends ZIOSpecDefault {
         val eventCount                 = (settings.batchSize * 2) + 3
 
         for {
-          events  <- Util
-                       .chunkOfStringsN(eventCount)
-                       .sample
-                       .map(_.get.value.map(ProducerEvent(_)))
+          events  <- chunkOfStringsN(eventCount).sample
+                       .map(_.value.map(ProducerEvent(_)))
                        .run(ZSink.head[Chunk[ProducerEvent[String]]])
                        .someOrFailException
           results <- ZIO.scoped {
@@ -269,10 +267,8 @@ object ProducerSpec extends ZIOSpecDefault {
         val eventCount                 = settings.batchSize
 
         for {
-          events  <- Util
-                       .chunkOfStringsN(eventCount)
-                       .sample
-                       .map(_.get.value.map(ProducerEvent(_)))
+          events  <- chunkOfStringsN(eventCount).sample
+                       .map(_.value.map(ProducerEvent(_)))
                        .run(ZSink.head[Chunk[ProducerEvent[String]]])
                        .someOrFailException
           results <- ZIO.scoped {
@@ -311,10 +307,8 @@ object ProducerSpec extends ZIOSpecDefault {
         val eventCount                 = settings.batchSize * 2
 
         for {
-          events  <- Util
-                       .chunkOfStringsN(eventCount)
-                       .sample
-                       .map(_.get.value.map(ProducerEvent(_)))
+          events  <- chunkOfStringsN(eventCount).sample
+                       .map(_.value.map(ProducerEvent(_)))
                        .run(ZSink.head[Chunk[ProducerEvent[String]]])
                        .someOrFailException
           results <- ZIO.scoped {
@@ -352,10 +346,8 @@ object ProducerSpec extends ZIOSpecDefault {
         val eventCount                 = settings.batchSize
 
         for {
-          events  <- Util
-                       .chunkOfStringsN(eventCount)
-                       .sample
-                       .map(_.get.value.map(ProducerEvent(_)))
+          events  <- chunkOfStringsN(eventCount).sample
+                       .map(_.value.map(ProducerEvent(_)))
                        .run(ZSink.head[Chunk[ProducerEvent[String]]])
                        .someOrFailException
           results <- ZIO.scoped {
@@ -620,16 +612,13 @@ object ProducerSpec extends ZIOSpecDefault {
           errOrResults <- producer.produceBatch(events).either
         } yield assert(errOrResults.isLeft)(isTrue)
       }
-    ).provideCustomLayerShared((zio.aws.netty.NettyHttpClient.default >>> zio.aws.core.config.AwsConfig.default >>> clientResource).orDie)
+    ).provideSomeLayerShared[TestEnvironment]((zio.aws.netty.NettyHttpClient.default >>> zio.aws.core.config.AwsConfig.default >>> clientResource).orDie)
 
   override def aspects: Chunk[TestAspect[Nothing, TestEnvironment, Nothing, Any]] =
     Chunk(TestAspect.executionStrategy(ExecutionStrategy.Sequential))
 
   def queueResource(capacity: Int): ZIO[Scope, Throwable, Queue[SqsRequestEntry[String]]] =
     ZIO.acquireRelease(Queue.bounded[SqsRequestEntry[String]](capacity))(_.shutdown)
-
-  def withFastClock: ZIO[Live, Any, Long] =
-    Live.withLive(TestClock.adjust(1.seconds))(_.repeat[Live, Long](Schedule.spaced(10.millis)))
 
   /**
    * A client that fails all incoming messages in the batch with unrecoverable error.
@@ -676,4 +665,10 @@ case class StubSqsService(api: SqsAsyncClient = null) extends Sqs {
     ???
   override def changeMessageVisibility(request: model.ChangeMessageVisibilityRequest): IO[AwsError, Unit]                                                    = ???
   override def withAspect[R](newAspect: aspects.AwsCallAspect[R], r: ZEnvironment[R]): Sqs                                                                   = ???
+
+  override def cancelMessageMoveTask(request: CancelMessageMoveTaskRequest): IO[AwsError, CancelMessageMoveTaskResponse.ReadOnly] = ???
+
+  override def startMessageMoveTask(request: StartMessageMoveTaskRequest): IO[AwsError, StartMessageMoveTaskResponse.ReadOnly] = ???
+
+  override def listMessageMoveTasks(request: ListMessageMoveTasksRequest): IO[AwsError, ListMessageMoveTasksResponse.ReadOnly] = ???
 }

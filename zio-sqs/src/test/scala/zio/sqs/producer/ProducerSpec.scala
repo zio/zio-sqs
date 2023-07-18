@@ -15,7 +15,6 @@ import zio.sqs.Utils
 import zio.stream.{ ZSink, ZStream }
 import zio.test.Assertion._
 import zio.test._
-//import zio.test.{ Live, TestClock, TestEnvironment }
 import zio.{ test => _, _ }
 import zio.sqs.testing._
 

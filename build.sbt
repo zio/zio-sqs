@@ -1,7 +1,7 @@
-val mainScala     = "2.13.10"
-val allScala      = Seq("3.2.1", "2.13.10", "2.12.16")
-val zioVersion    = "2.0.0"
-val zioAwsVersion = "5.17.224.4"
+val mainScala     = "2.13.11"
+val allScala      = Seq("3.3.0", "2.13.11", "2.12.18")
+val zioVersion    = "2.0.15"
+val zioAwsVersion = "6.20.83.2"
 
 inThisBuild(
   List(
@@ -34,6 +34,7 @@ publishTo := sonatypePublishToBundle.value
 
 addCommandAlias("fmt", "all scalafmtSbt scalafmt test:scalafmt")
 addCommandAlias("check", "all scalafmtSbtCheck scalafmtCheck test:scalafmtCheck")
+addCommandAlias("validate", "check" + allScala.map(v => s"++${v}! test").mkString(";", ";", ""))
 
 lazy val root = project
   .in(file("."))

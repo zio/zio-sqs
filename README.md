@@ -6,7 +6,7 @@
 
 [ZIO SQS](https://zio.dev/zio-sqs) is a ZIO-powered client for AWS SQS. It is built on top of the [AWS SDK for Java 2.0](https://docs.aws.amazon.com/sdk-for-java/v2/developer-guide/basics.html) via the automatically generated wrappers from [zio-aws](https://zio.dev/zio-aws).
 
-[![Production Ready](https://img.shields.io/badge/Project%20Stage-Production%20Ready-brightgreen.svg)](https://github.com/zio/zio/wiki/Project-Stages) ![CI Badge](https://github.com/zio/zio-sqs/workflows/CI/badge.svg) [![Sonatype Releases](https://img.shields.io/nexus/r/https/oss.sonatype.org/dev.zio/zio-sqs_2.13.svg?label=Sonatype%20Release)](https://oss.sonatype.org/content/repositories/releases/dev/zio/zio-sqs_2.13/) [![Sonatype Snapshots](https://img.shields.io/nexus/s/https/oss.sonatype.org/dev.zio/zio-sqs_2.13.svg?label=Sonatype%20Snapshot)](https://oss.sonatype.org/content/repositories/snapshots/dev/zio/zio-sqs_2.13/) [![javadoc](https://javadoc.io/badge2/dev.zio/zio-sqs_2.13/javadoc.svg)](https://javadoc.io/doc/dev.zio/zio-sqs_2.13) [![ZIO SQS](https://img.shields.io/github/stars/zio/zio-sqs?style=social)](https://github.com/zio/zio-sqs)
+[![Production Ready](https://img.shields.io/badge/Project%20Stage-Production%20Ready-brightgreen.svg)](https://github.com/zio/zio/wiki/Project-Stages) ![CI Badge](https://github.com/zio/zio-sqs/workflows/CI/badge.svg) [![Sonatype Releases](https://img.shields.io/nexus/r/https/oss.sonatype.org/dev.zio/zio-sqs_2.13.svg?label=Sonatype%20Release)](https://oss.sonatype.org/content/repositories/releases/dev/zio/zio-sqs_2.13/) [![Sonatype Snapshots](https://img.shields.io/nexus/s/https/oss.sonatype.org/dev.zio/zio-sqs_2.13.svg?label=Sonatype%20Snapshot)](https://oss.sonatype.org/content/repositories/snapshots/dev/zio/zio-sqs_2.13/) [![javadoc](https://javadoc.io/badge2/dev.zio/zio-sqs-docs_2.13/javadoc.svg)](https://javadoc.io/doc/dev.zio/zio-sqs-docs_2.13) [![ZIO SQS](https://img.shields.io/github/stars/zio/zio-sqs?style=social)](https://github.com/zio/zio-sqs)
 
 ## Introduction
 
@@ -17,7 +17,7 @@ ZIO SQS enables us to produce and consume elements to/from the Amazon SQS servic
 In order to use this library, we need to add the following line in our `build.sbt` file:
 
 ```scala
-libraryDependencies += "dev.zio" %% "zio-sqs" % "0.5.0"
+libraryDependencies += "dev.zio" %% "zio-sqs" % "0.6.0"
 ```
 
 ## Example
@@ -66,11 +66,11 @@ Learn more on the [ZIO SQS homepage](https://zio.dev/zio-sqs)!
 
 ## Contributing
 
-For the general guidelines, see ZIO [contributor's guide](https://zio.dev/about/contributing).
+For the general guidelines, see ZIO [contributor's guide](https://zio.dev/contributor-guidelines).
 
 ## Code of Conduct
 
-See the [Code of Conduct](https://zio.dev/about/code-of-conduct)
+See the [Code of Conduct](https://zio.dev/code-of-conduct)
 
 ## Support
 

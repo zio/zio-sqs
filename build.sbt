@@ -1,7 +1,7 @@
-val mainScala     = "2.13.11"
-val allScala      = Seq("3.3.0", "2.13.11", "2.12.18")
-val zioVersion    = "2.0.15"
-val zioAwsVersion = "6.20.83.2"
+val mainScala     = "2.13.14"
+val allScala      = Seq("3.3.3", "2.13.14", "2.12.19")
+val zioVersion    = "2.1.9"
+val zioAwsVersion = "7.21.15.15"
 
 inThisBuild(
   List(
@@ -57,11 +57,11 @@ lazy val sqs =
         "dev.zio"                %% "zio-streams"             % zioVersion,
         "dev.zio"                %% "zio-aws-sqs"             % zioAwsVersion,
         "dev.zio"                %% "zio-aws-netty"           % zioAwsVersion,
-        "org.scala-lang.modules" %% "scala-collection-compat" % "2.8.0",
+        "org.scala-lang.modules" %% "scala-collection-compat" % "2.12.0",
         "dev.zio"                %% "zio-test"                % zioVersion % "test",
         "dev.zio"                %% "zio-test-sbt"            % zioVersion % "test",
-        "org.elasticmq"          %% "elasticmq-rest-sqs"      % "1.3.7"    % "test" cross CrossVersion.for3Use2_13,
-        "org.elasticmq"          %% "elasticmq-core"          % "1.3.7"    % "test" cross CrossVersion.for3Use2_13
+        "org.elasticmq"          %% "elasticmq-rest-sqs"      % "1.6.7"    % "test",
+        "org.elasticmq"          %% "elasticmq-core"          % "1.6.7"    % "test"
       ) ++ (CrossVersion.partialVersion(scalaVersion.value) match {
         case Some((2, 12)) =>
           Seq("org.typelevel" %% "kind-projector" % "0.10.3")

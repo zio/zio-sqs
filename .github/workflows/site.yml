@@ -28,11 +28,11 @@ jobs:
         java-version: 17
         check-latest: true
     - name: Check that site workflow is up to date
-      run: sbt  docs/checkGithubWorkflow
+      run: sbt docs/compileDocs
     - name: Check artifacts build process
-      run: sbt  +publishLocal
+      run: sbt +publishLocal
     - name: Check website build process
-      run: sbt  docs/buildWebsite
+      run: sbt docs/buildWebsite
   publish-docs:
     name: Publish Docs
     runs-on: ubuntu-latest

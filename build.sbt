@@ -26,6 +26,25 @@ inThisBuild(
         "ghostdogpr@gmail.com",
         url("https://github.com/ghostdogpr")
       )
+    ),
+    githubWorkflowTargetTags ++= Seq("v*"),
+    githubWorkflowPublishTargetBranches := Seq(RefPredicate.StartsWith(Ref.Tag("v"))),
+    githubWorkflowJavaVersions := List(
+      JavaSpec.temurin("11"),
+      JavaSpec.temurin("17"),
+      JavaSpec.temurin("21")
+    ),
+    githubWorkflowPublish := Seq(
+      WorkflowStep.Sbt(
+        commands = List("ci-release"),
+        name = Some("Publish project"),
+        env = Map(
+          "PGP_PASSPHRASE"    -> "${{ secrets.PGP_PASSPHRASE }}",
+          "PGP_SECRET"        -> "${{ secrets.PGP_SECRET }}",
+          "SONATYPE_PASSWORD" -> "${{ secrets.SONATYPE_PASSWORD }}",
+          "SONATYPE_USERNAME" -> "${{ secrets.SONATYPE_USERNAME }}"
+        )
+      )
     )
   )
 )
@@ -123,7 +142,6 @@ lazy val docs = project
     projectName := "ZIO SQS",
     mainModuleName := (sqs / moduleName).value,
     projectStage := ProjectStage.ProductionReady,
-    docsPublishBranch := "series/2.x",
     ScalaUnidoc / unidoc / unidocProjectFilter := inProjects(sqs),
     libraryDependencies ++= Seq(
       "dev.zio" %% "zio" % zioVersion

@@ -79,14 +79,12 @@ lazy val sqs =
         "org.scala-lang.modules" %% "scala-collection-compat" % "2.12.0",
         "dev.zio"                %% "zio-test"                % zioVersion % "test",
         "dev.zio"                %% "zio-test-sbt"            % zioVersion % "test",
-        "org.elasticmq"          %% "elasticmq-rest-sqs"      % "1.6.7"    % "test",
-        "org.elasticmq"          %% "elasticmq-core"          % "1.6.7"    % "test"
+        "org.elasticmq"          %% "elasticmq-rest-sqs"      % "1.6.7"    % "test" cross CrossVersion.for3Use2_13,
+        "org.elasticmq"          %% "elasticmq-core"          % "1.6.7"    % "test" cross CrossVersion.for3Use2_13
       ) ++ (CrossVersion.partialVersion(scalaVersion.value) match {
-        case Some((2, 12)) =>
-          Seq("org.typelevel" %% "kind-projector" % "0.10.3")
-        case Some((2, 13)) =>
-          Seq("org.typelevel" %% "kind-projector" % "0.10.3")
-        case _             =>
+        case Some((2, 12 | 13)) =>
+          Seq("org.typelevel" %% "kind-projector" % "0.13.3" cross CrossVersion.full)
+        case _                  =>
           Nil
       }),
       scalacOptions ++= Seq(
@@ -128,7 +126,8 @@ lazy val sqs =
             "-Ywarn-unused",
             "-Ywarn-value-discard"
           )
-        case _             => Nil
+        case _             =>
+          Nil
       }),
       testFrameworks += new TestFramework("zio.test.sbt.ZTestFramework")
     )

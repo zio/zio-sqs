@@ -7,7 +7,6 @@ import zio.aws.core.{ aspects, AwsError }
 import zio.aws.sqs.model._
 import zio.aws.sqs.{ model, Sqs }
 import software.amazon.awssdk.services.sqs.SqsAsyncClient
-import zio.durationInt
 import zio.sqs.ZioSqsMockServer._
 import zio.sqs.producer.Producer.{ DefaultProducer, SqsRequest, SqsRequestEntry, SqsResponseErrorEntry }
 import zio.sqs.serialization.Serializer

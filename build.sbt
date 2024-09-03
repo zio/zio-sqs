@@ -1,7 +1,7 @@
-val mainScala     = "2.13.11"
-val allScala      = Seq("3.3.0", "2.13.11", "2.12.18")
-val zioVersion    = "2.0.15"
-val zioAwsVersion = "6.20.83.2"
+val mainScala     = "2.13.14"
+val allScala      = Seq("3.3.3", "2.13.14", "2.12.19")
+val zioVersion    = "2.1.9"
+val zioAwsVersion = "7.21.15.15"
 
 inThisBuild(
   List(
@@ -25,6 +25,25 @@ inThisBuild(
         "Pierre Ricadat",
         "ghostdogpr@gmail.com",
         url("https://github.com/ghostdogpr")
+      )
+    ),
+    githubWorkflowTargetTags ++= Seq("v*"),
+    githubWorkflowPublishTargetBranches := Seq(RefPredicate.StartsWith(Ref.Tag("v"))),
+    githubWorkflowJavaVersions := List(
+      JavaSpec.temurin("11"),
+      JavaSpec.temurin("17"),
+      JavaSpec.temurin("21")
+    ),
+    githubWorkflowPublish := Seq(
+      WorkflowStep.Sbt(
+        commands = List("ci-release"),
+        name = Some("Publish project"),
+        env = Map(
+          "PGP_PASSPHRASE"    -> "${{ secrets.PGP_PASSPHRASE }}",
+          "PGP_SECRET"        -> "${{ secrets.PGP_SECRET }}",
+          "SONATYPE_PASSWORD" -> "${{ secrets.SONATYPE_PASSWORD }}",
+          "SONATYPE_USERNAME" -> "${{ secrets.SONATYPE_USERNAME }}"
+        )
       )
     )
   )
@@ -57,17 +76,15 @@ lazy val sqs =
         "dev.zio"                %% "zio-streams"             % zioVersion,
         "dev.zio"                %% "zio-aws-sqs"             % zioAwsVersion,
         "dev.zio"                %% "zio-aws-netty"           % zioAwsVersion,
-        "org.scala-lang.modules" %% "scala-collection-compat" % "2.8.0",
+        "org.scala-lang.modules" %% "scala-collection-compat" % "2.12.0",
         "dev.zio"                %% "zio-test"                % zioVersion % "test",
         "dev.zio"                %% "zio-test-sbt"            % zioVersion % "test",
-        "org.elasticmq"          %% "elasticmq-rest-sqs"      % "1.3.7"    % "test" cross CrossVersion.for3Use2_13,
-        "org.elasticmq"          %% "elasticmq-core"          % "1.3.7"    % "test" cross CrossVersion.for3Use2_13
+        "org.elasticmq"          %% "elasticmq-rest-sqs"      % "1.6.7"    % "test" cross CrossVersion.for3Use2_13,
+        "org.elasticmq"          %% "elasticmq-core"          % "1.6.7"    % "test" cross CrossVersion.for3Use2_13
       ) ++ (CrossVersion.partialVersion(scalaVersion.value) match {
-        case Some((2, 12)) =>
-          Seq("org.typelevel" %% "kind-projector" % "0.10.3")
-        case Some((2, 13)) =>
-          Seq("org.typelevel" %% "kind-projector" % "0.10.3")
-        case _             =>
+        case Some((2, 12 | 13)) =>
+          Seq("org.typelevel" %% "kind-projector" % "0.13.3" cross CrossVersion.full)
+        case _                  =>
           Nil
       }),
       scalacOptions ++= Seq(
@@ -109,7 +126,8 @@ lazy val sqs =
             "-Ywarn-unused",
             "-Ywarn-value-discard"
           )
-        case _             => Nil
+        case _             =>
+          Nil
       }),
       testFrameworks += new TestFramework("zio.test.sbt.ZTestFramework")
     )
@@ -123,7 +141,6 @@ lazy val docs = project
     projectName := "ZIO SQS",
     mainModuleName := (sqs / moduleName).value,
     projectStage := ProjectStage.ProductionReady,
-    docsPublishBranch := "series/2.x",
     ScalaUnidoc / unidoc / unidocProjectFilter := inProjects(sqs),
     libraryDependencies ++= Seq(
       "dev.zio" %% "zio" % zioVersion

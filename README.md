@@ -17,7 +17,7 @@ ZIO SQS enables us to produce and consume elements to/from the Amazon SQS servic
 In order to use this library, we need to add the following line in our `build.sbt` file:
 
 ```scala
-libraryDependencies += "dev.zio" %% "zio-sqs" % "0.6.0"
+libraryDependencies += "dev.zio" %% "zio-sqs" % "0.6.1"
 ```
 
 ## Example

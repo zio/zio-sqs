@@ -52,7 +52,7 @@ inThisBuild(
 publishTo := sonatypePublishToBundle.value
 
 addCommandAlias("fmt", "all scalafmtSbt scalafmt test:scalafmt")
-addCommandAlias("check", "all scalafmtSbtCheck scalafmtCheck test:scalafmtCheck")
+addCommandAlias("lint", "all scalafmtSbtCheck scalafmtCheck test:scalafmtCheck")
 addCommandAlias("validate", "check" + allScala.map(v => s"++${v}! test").mkString(";", ";", ""))
 
 lazy val root = project

@@ -62,7 +62,7 @@ object ZioSqsSpec extends ZIOSpecDefault {
           stopWhenQueueEmpty = true,
           waitTimeSeconds = Some(1),
           visibilityTimeout = Some(2),
-          maxNumberOfMessages = 10_000
+          maxNumberOfMessages = 10000
         )
 
         val program =
@@ -91,7 +91,7 @@ object ZioSqsSpec extends ZIOSpecDefault {
           stopWhenQueueEmpty = true,
           waitTimeSeconds = Some(1),
           visibilityTimeout = Some(2),
-          maxNumberOfMessages = 10_000
+          maxNumberOfMessages = 10000
         )
 
         val program = for {

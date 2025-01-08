@@ -30,7 +30,7 @@ object SqsStream {
           .receiveMessage(request)
           .mapError(_.toThrowable)
       )
-      .map(_.messages.fold(Chunk.empty[Message.ReadOnly])(Chunk.from))
+      .map(_.messages.fold(Chunk.empty[Message.ReadOnly])(Chunk.fromIterable))
       .takeWhile(chunk => chunk.nonEmpty || !settings.stopWhenQueueEmpty)
       .flattenChunks
       .mapChunksZIO { messages =>
@@ -72,7 +72,7 @@ object SqsStream {
         response.messages
           .filter(_.nonEmpty)
           .fold[RIO[Sqs, Chunk[Message.ReadOnly]]](ifEmpty = Exit.succeed(Chunk.empty[Message.ReadOnly])) { underlying =>
-            val messages         = Chunk.from(underlying)
+            val messages         = Chunk.fromIterable(underlying)
             val extensionProcess =
               ZIO.sleep(extensionInitialDelay) *> ZIO
                 .when(extensionSettings.automaticExtension)(
@@ -136,15 +136,15 @@ object SqsStream {
 
             val errorMessage = ZIO.logWarning("Failed to change message visibility") @@ ZIOAspect.annotated("ids", failedIds.mkString("[", ", ", "]"))
             val retry        =
-              if (retriesRemaining > 0) go(Chunk.from(messagesToRetry), retriesRemaining - 1)
+              if (retriesRemaining > 0) go(Chunk.fromIterable(messagesToRetry), retriesRemaining - 1)
               else ZIO.fail(GenericAwsError(new RuntimeException("Failed to change message visibility after retrying")))
 
             errorMessage *> retry
-          } else Exit.succeed(Chunk.from(response.successful.map(each => idToMessageMap(each.id))))
+          } else Exit.succeed(Chunk.fromIterable(response.successful.map(each => idToMessageMap(each.id))))
         }
 
     ZStream
-      .from(Chunk.from(idToMessageMap))
+      .from(Chunk.fromIterable(idToMessageMap))
       .map { case (id, msg) => ChangeMessageVisibilityBatchRequestEntry(id, msg.receiptHandle.getOrElse(""), Option(seconds)) }
       .rechunk(10) // max batch size for changeMessageVisibilityBatch is 10
       .mapChunksZIO(go(_, maximumRetries))
@@ -182,18 +182,18 @@ object SqsStream {
             val messagesToRetry = failedIds.map(id => DeleteMessageBatchRequestEntry(id, idMessageMap(id).receiptHandle.getOrElse("")))
             val errorMessage    = ZIO.logWarning("Failed to delete messages, retrying") @@ ZIOAspect.annotated("ids", failedIds.mkString("[", ", ", "]"))
             val retry           =
-              if (retriesRemaining > 0) go(Chunk.from(messagesToRetry), retriesRemaining - 1)
+              if (retriesRemaining > 0) go(Chunk.fromIterable(messagesToRetry), retriesRemaining - 1)
               else ZIO.fail(GenericAwsError(new RuntimeException("Failed to delete messages after retrying")))
 
             errorMessage *> retry
           } else
             Exit.succeed(
-              Chunk.from(response.successful.map(each => idMessageMap(each.id)))
+              Chunk.fromIterable(response.successful.map(each => idMessageMap(each.id)))
             )
         }
 
     ZStream
-      .from(Chunk.from(idMessageMap))
+      .from(Chunk.fromIterable(idMessageMap))
       .map { case (id, msg) => DeleteMessageBatchRequestEntry(id, msg.receiptHandle.getOrElse("")) }
       .rechunk(10) // SQS Limit for deleteMessageBatch is 10
       .mapChunksZIO(go(_, maximumRetries))

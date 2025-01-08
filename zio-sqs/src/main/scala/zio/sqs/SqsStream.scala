@@ -7,6 +7,7 @@ import zio.stream.ZStream
 import zio.aws.sqs.model.primitives.MessageAttributeName
 import zio.aws.core.AwsError
 import zio.aws.core.GenericAwsError
+import zio.stream.ZSink
 
 object SqsStream {
 
@@ -217,4 +218,16 @@ object SqsStream {
       .mapError(_.toThrowable)
       .runCollect
   }
+
+  /**
+   * A sink that deletes messages from the queue.
+   * If you use SqsStream with autoDelete = false in conjunction with this sink, you will get at-least-once semantics since
+   * the messages will be deleted after they are successfully processed.
+   *
+    * @param queueUrl
+   * @param maximumRetries
+   * @return
+   */
+  def deleteMessageBatchSink(queueUrl: String, maximumRetries: Int = 8): ZSink[Sqs, Throwable, Message.ReadOnly, Nothing, Unit] =
+    ZSink.foreachChunk[Sqs, Throwable, Message.ReadOnly](deleteMessageBatch(queueUrl, _, maximumRetries))
 }

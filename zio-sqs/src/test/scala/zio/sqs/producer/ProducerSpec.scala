@@ -20,7 +20,9 @@ import zio.sqs.testing._
 import scala.language.implicitConversions
 
 object ProducerSpec extends ZIOSpecDefault {
-  implicit def batchResultErrorEntryAsReadOnly(e: BatchResultErrorEntry): BatchResultErrorEntry.ReadOnly          = BatchResultErrorEntry.wrap(e.buildAwsValue())
+  implicit def batchResultErrorEntryAsReadOnly(e: BatchResultErrorEntry): BatchResultErrorEntry.ReadOnly =
+    BatchResultErrorEntry.wrap(e.buildAwsValue())
+
   implicit def sendMessageBatchResponseAsReadOnly(e: SendMessageBatchResponse): SendMessageBatchResponse.ReadOnly =
     SendMessageBatchResponse.wrap(e.buildAwsValue())
 
@@ -601,7 +603,7 @@ object ProducerSpec extends ZIOSpecDefault {
           _               <- withFastClock.fork
           scope           <- Scope.make
           producerPromise <- Producer
-                               .make[Any, String](queueUrl, Serializer.serializeString, settings)
+                               .make[String](queueUrl, Serializer.serializeString, settings)
                                .provide(client, ZLayer.succeed(scope))
                                .fork
 

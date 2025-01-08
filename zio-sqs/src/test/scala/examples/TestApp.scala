@@ -36,7 +36,7 @@ object TestApp extends zio.ZIOAppDefault {
                 }
     _        <- SqsStream(
                   queueUrl,
-                  SqsStreamSettings(stopWhenQueueEmpty = true, waitTimeSeconds = Some(3))
+                  SqsStreamSettings.default.withStopWhenQueueEmpty(true).withWaitTimeSeconds(3)
                 ).foreach(msg => ZIO.succeed(println(msg.body)))
   } yield ()
 

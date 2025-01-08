@@ -44,7 +44,7 @@ object SqsStream {
       .flattenChunks
       .mapChunksZIO { messages =>
         // NOTE: At-most-once semantics (when autoDelete=true)
-        if (settings.autoDelete) deleteMessageBatch(queueUrl, messages)
+        if (settings.autoDelete) deleteMessageBatch(queueUrl, messages).as(messages)
         else Exit.succeed(messages)
       }
   }

@@ -17,7 +17,7 @@ object ZioSqsSpec extends ZIOSpecDefault {
   override def spec =
     suite("ZioSqsSpec")(
       test("send messages") {
-        val settings: SqsStreamSettings = SqsStreamSettings(stopWhenQueueEmpty = true)
+        val settings: SqsStreamSettings = SqsStreamSettings.default.withStopWhenQueueEmpty(true)
 
         for {
           messages <- gen.runHead.someOrFailException
@@ -27,7 +27,10 @@ object ZioSqsSpec extends ZIOSpecDefault {
       },
       test("delete messages manually") {
         val settings: SqsStreamSettings =
-          SqsStreamSettings(stopWhenQueueEmpty = true, autoDelete = false, waitTimeSeconds = Some(1))
+          SqsStreamSettings.default
+            .withStopWhenQueueEmpty(true)
+            .withAutoDelete(false)
+            .withWaitTimeSeconds(1)
 
         for {
           messages <- gen.runHead.someOrFailException
@@ -43,7 +46,7 @@ object ZioSqsSpec extends ZIOSpecDefault {
         } yield assert(list)(isEmpty)
       },
       test("delete messages automatically") {
-        val settings: SqsStreamSettings = SqsStreamSettings(stopWhenQueueEmpty = true, waitTimeSeconds = Some(1))
+        val settings: SqsStreamSettings = SqsStreamSettings.default.withStopWhenQueueEmpty(true).withWaitTimeSeconds(1)
 
         for {
           messages <- gen.runHead.someOrFailException
@@ -58,12 +61,11 @@ object ZioSqsSpec extends ZIOSpecDefault {
         } yield assert(list)(isEmpty)
       },
       test("consumeChunkAtLeastOnce will not delete messages if there is an error encountered when processing") {
-        val settings = SqsStreamSettings(
-          stopWhenQueueEmpty = true,
-          waitTimeSeconds = Some(1),
-          visibilityTimeout = Some(2),
-          maxNumberOfMessages = 10000
-        )
+        val settings = SqsStreamSettings.default
+          .withStopWhenQueueEmpty(true)
+          .withWaitTimeSeconds(1)
+          .withVisibilityTimeout(2)
+          .withMaxNumberOfMessages(10000)
 
         val program =
           for {
@@ -87,12 +89,11 @@ object ZioSqsSpec extends ZIOSpecDefault {
         ZIO.scoped(program)
       } @@ TestAspect.withLiveClock,
       test("consumeChunkAtLeastOnce will automatically extend message lifetime and delete messages after successful processing") {
-        val settings = SqsStreamSettings(
-          stopWhenQueueEmpty = true,
-          waitTimeSeconds = Some(1),
-          visibilityTimeout = Some(2),
-          maxNumberOfMessages = 10000
-        )
+        val settings = SqsStreamSettings.default
+          .withStopWhenQueueEmpty(true)
+          .withWaitTimeSeconds(1)
+          .withVisibilityTimeout(2)
+          .withMaxNumberOfMessages(10000)
 
         val program = for {
           _              <- serverResource

@@ -10,18 +10,26 @@ import zio.aws.core.GenericAwsError
 
 object SqsStream {
 
+  /**
+   * Creates a consumer stream that pulls messages from the SQS queue.
+   * Note that if you set autoDelete to true, the message will be deleted from SQS before you can process the message (so if you fail to process the message, it will be deleted).
+   *
+   * @param queueUrl is the SQS queue URL (example: https://sqs.us-east-1.amazonaws.com/123456789012/MyQueue)
+   * @param settings are the settings for reading messages from the queue
+   * @return a stream of messages from the queue
+   */
   def apply(
     queueUrl: String,
-    settings: SqsStreamSettings = SqsStreamSettings()
+    settings: SqsStreamSettings = SqsStreamSettings.default
   ): ZStream[Sqs, Throwable, Message.ReadOnly] = {
 
     val request = ReceiveMessageRequest(
       queueUrl = queueUrl,
-      attributeNames = Some(settings.attributeNames),
-      messageAttributeNames = Some(settings.messageAttributeNames.map(MessageAttributeName.apply(_))),
-      maxNumberOfMessages = Some(settings.maxNumberOfMessages),
-      visibilityTimeout = Some(settings.visibilityTimeout.getOrElse(30)),
-      waitTimeSeconds = Some(settings.waitTimeSeconds.getOrElse(20))
+      attributeNames = Option(settings.attributeNames).filter(_.nonEmpty),
+      messageAttributeNames = Option(settings.messageAttributeNames.map(MessageAttributeName.apply(_))),
+      maxNumberOfMessages = settings.maxNumberOfMessages,
+      visibilityTimeout = settings.visibilityTimeout,
+      waitTimeSeconds = settings.waitTimeSeconds
     )
 
     ZStream
@@ -60,9 +68,9 @@ object SqsStream {
   )(process: Chunk[Message.ReadOnly] => Task[Unit]): RIO[Sqs, Unit] = {
     val request = ReceiveMessageRequest(
       queueUrl = queueUrl,
-      attributeNames = Option(settings.attributeNames),
-      messageAttributeNames = Option(settings.messageAttributeNames.map(MessageAttributeName.apply(_))),
-      maxNumberOfMessages = Option(settings.maxNumberOfMessages),
+      attributeNames = Option(settings.attributeNames).filter(_.nonEmpty),
+      messageAttributeNames = Option(settings.messageAttributeNames.map(MessageAttributeName.apply(_))).filter(_.nonEmpty),
+      maxNumberOfMessages = settings.maxNumberOfMessages,
       visibilityTimeout = settings.visibilityTimeout,
       waitTimeSeconds = settings.waitTimeSeconds
     )

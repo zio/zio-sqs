@@ -44,14 +44,19 @@ object SqsStream {
    * Consumes a batch of messages from the queue and deletes them after successful processing so users can focus on processing messages.
    * This will ignore autoDelete since messages are deleted only after successful processing.
    * This will also respect the stopWhenQueueEmpty setting.
+   * This will delete messages from the queue only after they have been successfully processed (process function).
    *
-   * @param queueUrl
-   * @param settings
+   * @param queueUrl is the SQS queue URL (example: https://sqs.us-east-1.amazonaws.com/123456789012/MyQueue)
+   * @param settings are the settings for reading messages from the queue
+   * @param extensionSettings are the settings for the message lifetime extension
+   * @param consumerParallelism is the number of parallel consumers to run (default: 1)
+   * @param process is the function to process the messages
    */
   def consumeChunkAtLeastOnce(
     queueUrl: String,
     settings: SqsStreamSettings,
-    extensionSettings: SqsMessageLifetimeExtensionSettings
+    extensionSettings: SqsMessageLifetimeExtensionSettings,
+    consumerParallelism: Int = 1
   )(process: Chunk[Message.ReadOnly] => Task[Unit]): RIO[Sqs, Unit] = {
     val request = ReceiveMessageRequest(
       queueUrl = queueUrl,
@@ -89,7 +94,11 @@ object SqsStream {
           }
       }
 
-    pull.repeatWhile(_.nonEmpty || !settings.stopWhenQueueEmpty).unit
+    val consumerProcess = pull.repeatWhile(_.nonEmpty || !settings.stopWhenQueueEmpty).unit
+
+    ZIO.collectAllParDiscard(
+      List.fill(consumerParallelism)(consumerProcess)
+    )
   }
 
   /**

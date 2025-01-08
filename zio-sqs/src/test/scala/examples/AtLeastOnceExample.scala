@@ -12,11 +12,12 @@ import zio.sqs._
 import zio.aws.sqs.model.Message
 
 object AtLeastOnceExample extends ZIOAppDefault {
+  val queueUrl = "https://sqs.us-east-1.amazonaws.com/00000/calq.fifo"
 
   val producerLayer: RLayer[Sqs, Producer[String]] =
     ZLayer.scoped(
       Producer.make(
-        queueUrl = "https://sqs.us-east-1.amazonaws.com/000/calq.fifo",
+        queueUrl = queueUrl,
         serializer = Serializer.serializeString,
         settings = ProducerSettings(parallelism = 1)
       )
@@ -25,7 +26,7 @@ object AtLeastOnceExample extends ZIOAppDefault {
   val producerExample =
     ZIO.serviceWithZIO[Producer[String]] { producer =>
       producer.produceBatch(
-        (200 to 300).map(i =>
+        (0 to 200).map(i =>
           ProducerEvent(
             data = s"Message $i",
             attributes = Map.empty,
@@ -41,17 +42,23 @@ object AtLeastOnceExample extends ZIOAppDefault {
 
   val consumerExample =
     SqsStream.consumeChunkAtLeastOnce(
-      queueUrl = "https://sqs.us-east-1.amazonaws.com/000/calq.fifo",
-      settings = SqsStreamSettings.default.copy(
-        maxNumberOfMessages = Option(10),
-        visibilityTimeout = Some(5),
-        waitTimeSeconds = Some(20)
-      ),
+      queueUrl = queueUrl,
+      settings = SqsStreamSettings.default
+        .withMaxNumberOfMessages(10)
+        .withVisibilityTimeout(5)
+        .withWaitTimeSeconds(20),
       extensionSettings = SqsMessageLifetimeExtensionSettings.default,
       consumerParallelism = 10
     ) { (messages: Chunk[Message.ReadOnly]) =>
       ZIO.debug(messages.map(_.body.getOrElse(""))) *> ZIO.sleep(14.seconds)
     }
+
+  val consumerStreamExample =
+    SqsStream(
+      queueUrl = queueUrl,
+      settings = SqsStreamSettings.default.withAutoDelete(false)
+    ).tap(message => ZIO.debug(message.body.getOrElse("")))
+      .run(SqsStream.deleteMessageBatchSink(queueUrl))
 
   override val run: ZIO[Environment with ZIOAppArgs with Scope, Any, Any] =
     (producerExample *> consumerExample)

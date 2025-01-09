@@ -60,6 +60,28 @@ object ZioSqsSpec extends ZIOSpecDefault {
                       }
         } yield assert(list)(isEmpty)
       },
+      test("deleteMessageBatchSink deletes messages from the queue") {
+        val settings: SqsStreamSettings = SqsStreamSettings.default.withStopWhenQueueEmpty(true).withWaitTimeSeconds(1)
+        val program                     =
+          for {
+            _                 <- serverResource
+            _                 <- Utils.createQueue(queueName)
+            queueUrl          <- Utils.getQueueUrl(queueName)
+            messages          <- gen.runHead.someOrFailException
+            _                 <- ZIO.scoped {
+                                   Producer.make(queueUrl, Serializer.serializeString)
+                                     .flatMap(_.produceBatch(messages.map(ProducerEvent(_))))
+                                 }
+            messageQueue      <- Queue.unbounded[Message.ReadOnly]
+            _                 <- SqsStream(queueUrl, settings)
+                                   .mapChunksZIO(chunk => messageQueue.offerAll(chunk).as(chunk))
+                                   .run(SqsStream.deleteMessageBatchSink(queueUrl))
+            list              <- SqsStream(queueUrl, settings).runCollect
+            messagesFromQueue <- messageQueue.takeAll
+          } yield assert(list)(isEmpty) && assert(messagesFromQueue.map(_.body.getOrElse("")))(hasSameElements(messages))
+
+        ZIO.scoped(program)
+      } @@ TestAspect.withLiveClock,
       test("consumeChunkAtLeastOnce will not delete messages if there is an error encountered when processing") {
         val settings = SqsStreamSettings.default
           .withStopWhenQueueEmpty(true)

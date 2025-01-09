@@ -47,7 +47,7 @@ object ProducerConsumerExample extends ZIOAppDefault {
     _        <- ZIO.scoped(producer.flatMap(_.sendStream(stream).runDrain))
     _        <- SqsStream(
                   queueUrl,
-                  SqsStreamSettings(stopWhenQueueEmpty = true, waitTimeSeconds = Some(3))
+                  SqsStreamSettings.default.withStopWhenQueueEmpty(true).withWaitTimeSeconds(3)
                 ).foreach(msg => Console.printLine(msg.body))
   } yield ()
 
@@ -59,6 +59,8 @@ object ProducerConsumerExample extends ZIOAppDefault {
     )
 }
 ```
+
+Check out the [examples](../zio-sqs/src/test/scala/examples) folder for more examples.
 
 ## Documentation
 

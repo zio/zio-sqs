@@ -97,16 +97,16 @@ object Producer {
    * @tparam T type of the event to publish
    * @return managed producer for publishing events.
    */
-  def make[R, T](
+  def make[T](
     queueUrl: String,
     serializer: Serializer[T],
     settings: ProducerSettings = ProducerSettings()
-  ): ZIO[R with Sqs with Scope, Throwable, Producer[T]] = {
+  ): ZIO[Sqs & Scope, Throwable, Producer[T]] = {
     val eventQueueSize = nextPower2(settings.batchSize * settings.parallelism)
     for {
       eventQueue <- ZIO.acquireRelease(Queue.bounded[SqsRequestEntry[T]](eventQueueSize))(_.shutdown)
       failQueue  <- ZIO.acquireRelease(Queue.bounded[SqsRequestEntry[T]](eventQueueSize))(_.shutdown)
-      reqRunner   = runSendMessageBatchRequest[R, T](failQueue, settings.retryDelay, settings.retryMaxCount) _
+      reqRunner   = runSendMessageBatchRequest[T](failQueue, settings.retryDelay, settings.retryMaxCount) _
       reqBuilder  = buildSendMessageBatchRequest(queueUrl, serializer) _
       stream      = ZStream.fromQueue(failQueue)
                       .merge(ZStream.fromQueue(eventQueue))
@@ -116,7 +116,7 @@ object Producer {
                       )
                       .map(chunks => reqBuilder(chunks.toList))
                       .mapZIOParUnordered(settings.parallelism)(reqRunner)
-      _          <- stream.runDrain.forkDaemon
+      _          <- stream.runDrain.forkScoped
     } yield new DefaultProducer[T](eventQueue, settings)
   }
 
@@ -192,13 +192,12 @@ object Producer {
    * @param retryDelay delay to wait inserting events to the failedQueue.
    * @param retryMaxCount max allowed number of retries per event.
    * @param req batch-request to send to SQS.
-   * @tparam R zio environment.
    * @tparam T type of the event to publish.
    * @return result of the operation.
    */
-  private[sqs] def runSendMessageBatchRequest[R, T](failedQueue: Queue[SqsRequestEntry[T]], retryDelay: Duration, retryMaxCount: Int)(
+  private[sqs] def runSendMessageBatchRequest[T](failedQueue: Queue[SqsRequestEntry[T]], retryDelay: Duration, retryMaxCount: Int)(
     req: SqsRequest[T]
-  ): RIO[R with Sqs, Unit] =
+  ): RIO[Sqs, Unit] =
     zio.aws.sqs.Sqs
       .sendMessageBatch(req.inner)
       .mapError(_.toThrowable)

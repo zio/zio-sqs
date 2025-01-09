@@ -9,7 +9,7 @@ import zio.sqs.serialization.Serializer
 import zio.sqs.{ SqsStream, SqsStreamSettings, Utils }
 import zio._
 
-object TestApp extends zio.ZIOAppDefault {
+object AtMostOnceExample extends zio.ZIOAppDefault {
   val queueName = "TestQueue"
 
   val client: ZLayer[Any, Throwable, Sqs] =
@@ -36,7 +36,7 @@ object TestApp extends zio.ZIOAppDefault {
                 }
     _        <- SqsStream(
                   queueUrl,
-                  SqsStreamSettings(stopWhenQueueEmpty = true, waitTimeSeconds = Some(3))
+                  SqsStreamSettings.default.withStopWhenQueueEmpty(true).withWaitTimeSeconds(3).withAutoDelete(true)
                 ).foreach(msg => ZIO.succeed(println(msg.body)))
   } yield ()
 

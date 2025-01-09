@@ -22,7 +22,7 @@ libraryDependencies += "dev.zio" %% "zio-sqs" % "@VERSION@"
 
 ## Example
 
-In this example we produce a stream of events to the `MyQueue` and then consume them from that queue:
+In this example we produce a stream of events to the `MyQueue` and then consume them from that queue (at-most-once delivery semantics):
 
 ```scala mdoc:compile-only
 import zio._
@@ -47,7 +47,10 @@ object ProducerConsumerExample extends ZIOAppDefault {
     _        <- ZIO.scoped(producer.flatMap(_.sendStream(stream).runDrain))
     _        <- SqsStream(
                   queueUrl,
-                  SqsStreamSettings.default.withStopWhenQueueEmpty(true).withWaitTimeSeconds(3)
+                  SqsStreamSettings.default
+                    .withAutoDelete(true)
+                    .withStopWhenQueueEmpty(true)
+                    .withWaitTimeSeconds(3)
                 ).foreach(msg => Console.printLine(msg.body))
   } yield ()
 
@@ -60,4 +63,4 @@ object ProducerConsumerExample extends ZIOAppDefault {
 }
 ```
 
-Check out the [examples](../zio-sqs/src/test/scala/examples) folder for more examples.
+Check out the examples folder in `zio-sqs/src/test/scala/examples` for additional examples that cover at-least-once and at-most-once delivery semantics.

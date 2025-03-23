@@ -3,6 +3,22 @@ package zio.sqs
 import zio.aws.sqs.model._
 import zio._
 
+/**
+ * Configuration settings for consuming messages from an SQS queue.
+ *
+ * @param attributeNames List of queue attribute names to retrieve with each message. See AWS SQS API documentation for valid values.
+ * @param maxNumberOfMessages Maximum number of messages to retrieve in a single request. Valid values are between 1 and 10.
+ * @param messageAttributeNames List of message attribute names to retrieve with each message.
+ * @param visibilityTimeout The duration (in seconds) that the received messages are hidden from subsequent retrieve requests.
+ *                         If None, uses the queue's default visibility timeout. See AWS SQS Visibility Timeout documentation.
+ * @param waitTimeSeconds The duration (in seconds) for which the call waits for messages to arrive in the queue before returning.
+ *                       Maximum is 20 seconds. If None, uses the queue's default wait time. Enables long polling when > 0.
+ *                       Note that setting this to None will use short polling and increases the number of requests made to SQS causing an increase in costs.
+ * @param autoDelete If true, messages will be automatically deleted from the queue when consumed by the stream.
+ *                  If false, messages must be explicitly deleted using `SqsStream.deleteMessage`.
+ * @param stopWhenQueueEmpty If true, the stream will stop when the queue is empty.
+ *                          If false, the stream will continue polling for new messages indefinitely.
+ */
 final case class SqsStreamSettings(
   attributeNames: List[QueueAttributeName],
   maxNumberOfMessages: Option[Int],
@@ -45,7 +61,7 @@ object SqsStreamSettings {
     maxNumberOfMessages = None,
     messageAttributeNames = Nil,
     visibilityTimeout = None,
-    waitTimeSeconds = None,
+    waitTimeSeconds = Some(20), // Long polling by default
     autoDelete = false,
     stopWhenQueueEmpty = false
   )

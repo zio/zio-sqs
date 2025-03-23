@@ -17,7 +17,7 @@ object ZioSqsSpec extends ZIOSpecDefault {
   override def spec =
     suite("ZioSqsSpec")(
       test("send messages") {
-        val settings: SqsStreamSettings = SqsStreamSettings.default.withStopWhenQueueEmpty(true)
+        val settings: SqsStreamSettings = SqsStreamSettings.default.withWaitTimeSeconds(1).withStopWhenQueueEmpty(true)
 
         for {
           messages <- gen.runHead.someOrFailException

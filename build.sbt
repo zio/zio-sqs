@@ -1,7 +1,7 @@
-val mainScala     = "2.13.15"
-val allScala      = Seq("3.3.4", "2.13.15", "2.12.20")
-val zioVersion    = "2.1.14"
-val zioAwsVersion = "7.28.29.13"
+val mainScala     = "2.13.16"
+val allScala      = Seq("3.3.5", "2.13.16", "2.12.20")
+val zioVersion    = "2.1.16"
+val zioAwsVersion = "7.31.6.1"
 
 inThisBuild(
   List(
@@ -76,7 +76,7 @@ lazy val sqs =
         "dev.zio"                %% "zio-streams"             % zioVersion,
         "dev.zio"                %% "zio-aws-sqs"             % zioAwsVersion,
         "dev.zio"                %% "zio-aws-netty"           % zioAwsVersion,
-        "org.scala-lang.modules" %% "scala-collection-compat" % "2.12.0",
+        "org.scala-lang.modules" %% "scala-collection-compat" % "2.13.0",
         "dev.zio"                %% "zio-test"                % zioVersion % "test",
         "dev.zio"                %% "zio-test-sbt"            % zioVersion % "test",
         "org.elasticmq"          %% "elasticmq-rest-sqs"      % "1.6.11"   % "test",

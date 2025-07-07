@@ -1,7 +1,7 @@
 val mainScala     = "2.13.16"
 val allScala      = Seq("3.3.6", "2.13.16", "2.12.20")
 val zioVersion    = "2.1.19"
-val zioAwsVersion = "7.31.30.4"
+val zioAwsVersion = "7.31.52.2"
 
 inThisBuild(
   List(
@@ -48,8 +48,6 @@ inThisBuild(
     )
   )
 )
-
-publishTo := sonatypePublishToBundle.value
 
 addCommandAlias("fmt", "all scalafmtSbt scalafmt test:scalafmt")
 addCommandAlias("lint", "all scalafmtSbtCheck scalafmtCheck test:scalafmtCheck")

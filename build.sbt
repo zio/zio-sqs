@@ -77,8 +77,8 @@ lazy val sqs =
         "org.scala-lang.modules" %% "scala-collection-compat" % "2.13.0",
         "dev.zio"                %% "zio-test"                % zioVersion % "test",
         "dev.zio"                %% "zio-test-sbt"            % zioVersion % "test",
-        "org.elasticmq"          %% "elasticmq-rest-sqs"      % "1.6.12"   % "test",
-        "org.elasticmq"          %% "elasticmq-core"          % "1.6.12"   % "test"
+        "org.elasticmq"          %% "elasticmq-rest-sqs"      % "1.6.14"   % "test",
+        "org.elasticmq"          %% "elasticmq-core"          % "1.6.14"   % "test"
       ) ++ (CrossVersion.partialVersion(scalaVersion.value) match {
         case Some((2, 12 | 13)) =>
           Seq("org.typelevel" %% "kind-projector" % "0.13.3" cross CrossVersion.full)

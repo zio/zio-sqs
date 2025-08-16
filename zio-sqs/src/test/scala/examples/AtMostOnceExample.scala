@@ -40,6 +40,6 @@ object AtMostOnceExample extends zio.ZIOAppDefault {
                 ).foreach(msg => ZIO.succeed(println(msg.body)))
   } yield ()
 
-  override def run: UIO[ExitCode] =
-    program.provide(client).exitCode
+  override def run: Task[Unit] =
+    program.provide(client)
 }

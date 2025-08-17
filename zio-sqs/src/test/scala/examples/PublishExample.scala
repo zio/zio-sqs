@@ -5,7 +5,7 @@ import zio.sqs._
 import zio.sqs.producer._
 import zio.sqs.serialization._
 import zio.stream._
-import zio.{ ExitCode, RIO, UIO, ZIO, ZLayer }
+import zio.{ RIO, ZIO, ZLayer }
 
 object PublishExample extends zio.ZIOAppDefault {
 
@@ -22,6 +22,6 @@ object PublishExample extends zio.ZIOAppDefault {
     errOrResult <- ZIO.scoped(producer.flatMap(p => p.sendStream(ZStream(events: _*)).runDrain.either))
   } yield errOrResult
 
-  override def run: UIO[ExitCode] =
-    program.provide(client).exitCode
+  override def run: ZIO[Any, Throwable, Unit] =
+    program.provide(client).absolve
 }

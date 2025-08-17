@@ -10,18 +10,16 @@ In order to use the connector, you need to provide your program with a configure
 Use `Producer.make` to instantiate an instance of `Producer` trait that can be used to publish objects of type `T` to the queue.
 
 ```scala
-def make[R, T](
-    queueUrl: String,
-    serializer: Serializer[T],
-    settings: ProducerSettings = ProducerSettings()
-  ): ZManaged[R with Sqs with Clock, Throwable, Producer[T]]
+def make[T](
+  queueUrl: String,
+  serializer: Serializer[T],
+  settings: ProducerSettings = ProducerSettings()
+): ZIO[Sqs & Scope, Throwable, Producer[T]]
 ```
 
 where:
-
 - `queueUrl: String` - an SQS queue URL
-- `serializer: Serializer[T]` - an instance of `zio.sqs.serialization.Serializer` that can be used to convert an object of type `T` to a string.
-
+- `serializer: Serializer[T]` - an instance of `zio.sqs.serialization.Serializer` that can be used to convert an object of type `T` to a `String`.
   ```scala
     trait Serializer[T] {
       def apply(t: T): String
@@ -37,7 +35,6 @@ where:
     - `retryMaxCount: Int` - The number of retries to make for a posted event (default: 10).
 
 ### Producer
-
 `Producer` contains two set of methods:
 - methods that fail the resulting *Task* or *Stream* if SQS server returns an error for a published event.
     - `def produce(e: ProducerEvent[T]): Task[ProducerEvent[T]]` - Publishes a single event and fails the task.
@@ -84,31 +81,30 @@ val event: ProducerEvent = ProducerEvent(str)
 ### Publish Example
 
 ```scala
-import io.github.vigoo.zioaws
-import io.github.vigoo.zioaws.sqs.Sqs
-import zio.clock.Clock
+import zio.aws.sqs.Sqs
 import zio.sqs._
 import zio.sqs.producer._
 import zio.sqs.serialization._
 import zio.stream._
-import zio.{ ExitCode, RIO, URIO, ZLayer }
+import zio.{ RIO, ZIO, ZLayer }
 
-object PublishExample extends zio.App {
+object PublishExample extends zio.ZIOAppDefault {
 
-  val client: ZLayer[Any, Throwable, Sqs] = zioaws.netty.default >>>
-    zioaws.core.config.default >>>
-    zioaws.sqs.live
+  val client: ZLayer[Any, Throwable, Sqs] =
+    zio.aws.netty.NettyHttpClient.default >>>
+      zio.aws.core.config.AwsConfig.default >>>
+      zio.aws.sqs.Sqs.live
 
-  val events                                                = List("message1", "message2").map(ProducerEvent(_))
-  val queueName                                             = "TestQueue"
-  val program: RIO[Clock with Sqs, Either[Throwable, Unit]] = for {
+  val events                                     = List("message1", "message2").map(ProducerEvent(_))
+  val queueName                                  = "TestQueue"
+  val program: RIO[Sqs, Either[Throwable, Unit]] = for {
     queueUrl    <- Utils.getQueueUrl(queueName)
     producer     = Producer.make(queueUrl, Serializer.serializeString)
-    errOrResult <- producer.use(p => p.sendStream(ZStream(events: _*)).runDrain.either)
+    errOrResult <- ZIO.scoped(producer.flatMap(p => p.sendStream(ZStream(events: _*)).runDrain.either))
   } yield errOrResult
 
-  override def run(args: List[String]): URIO[zio.ZEnv, ExitCode] =
-    program.provideCustomLayer(client).exitCode
+  override def run: ZIO[Any, Throwable, Unit] =
+    program.provide(client).absolve
 }
 ```
 
@@ -140,53 +136,74 @@ import zio.sqs.{SqsStream, SqsStreamSettings}
 
 SqsStream(
   queueUrl,
-  SqsStreamSettings(stopWhenQueueEmpty = true, waitTimeSeconds = Some(3))
-).foreach(msg => UIO(println(msg.body)))
+  SqsStreamSettings.default.withStopWhenQueueEmpty(true).withWaitTimeSeconds(3).withAutoDelete(true)
+).foreach(msg => ZIO.succeed(println(msg.body)))
 ```
 
 ### Full example
 
+Here is an example of a program that sends a message to a queue and then consumes it using at-most-once delivery semantics:
 ```scala
-import io.github.vigoo.zioaws
-import io.github.vigoo.zioaws.core.config.CommonAwsConfig
-import io.github.vigoo.zioaws.sqs.Sqs
+import zio.aws.core.config.CommonAwsConfig
+import zio.aws.sqs.Sqs
 import software.amazon.awssdk.auth.credentials.{ AwsBasicCredentials, StaticCredentialsProvider }
 import software.amazon.awssdk.regions.Region
-import zio.clock.Clock
 import zio.sqs.producer.{ Producer, ProducerEvent }
 import zio.sqs.serialization.Serializer
 import zio.sqs.{ SqsStream, SqsStreamSettings, Utils }
 import zio._
 
-object TestApp extends zio.App {
+object AtMostOnceExample extends zio.ZIOAppDefault {
   val queueName = "TestQueue"
 
-  val client: ZLayer[Any, Throwable, Sqs] = zioaws.netty.default ++
-    ZLayer.succeed(
-      CommonAwsConfig(
-        region = Some(Region.of("ap-northeast-2")),
-        credentialsProvider = StaticCredentialsProvider.create(AwsBasicCredentials.create("key", "key")),
-        endpointOverride = None,
-        commonClientConfig = None
-      )
-    ) >>>
-    zioaws.core.config.configured() >>>
-    zioaws.sqs.live
+  val client: ZLayer[Any, Throwable, Sqs] =
+    zio.aws.netty.NettyHttpClient.default ++
+      ZLayer.succeed(
+        CommonAwsConfig(
+          region = Some(Region.of("ap-northeast-2")),
+          credentialsProvider = StaticCredentialsProvider.create(AwsBasicCredentials.create("key", "key")),
+          endpointOverride = None,
+          commonClientConfig = None
+        )
+      ) >>>
+      zio.aws.core.config.AwsConfig.configured() >>>
+      zio.aws.sqs.Sqs.live
 
-  val program: RIO[Sqs with Clock, Unit] = for {
+  val program: RIO[Sqs, Unit] = for {
     _        <- Utils.createQueue(queueName)
     queueUrl <- Utils.getQueueUrl(queueName)
     producer  = Producer.make(queueUrl, Serializer.serializeString)
-    _        <- producer.use { p =>
-                  p.produce(ProducerEvent("hello"))
+    _        <- ZIO.scoped {
+                  producer.flatMap { p =>
+                    p.produce(ProducerEvent("hello"))
+                  }
                 }
     _        <- SqsStream(
                   queueUrl,
-                  SqsStreamSettings(stopWhenQueueEmpty = true, waitTimeSeconds = Some(3))
-                ).foreach(msg => UIO(println(msg.body)))
+                  SqsStreamSettings.default.withStopWhenQueueEmpty(true).withWaitTimeSeconds(3).withAutoDelete(true)
+                ).foreach(msg => ZIO.succeed(println(msg.body)))
   } yield ()
 
-  override def run(args: List[String]): URIO[zio.ZEnv, ExitCode] =
-    program.provideCustomLayer(client).exitCode
+  override def run: Task[Unit] =
+    program.provide(client)
 }
 ```
+
+You can also achieve at-least-once delivery semantics by using `SqsStream.consumeChunkAtLeastOnce`:
+```scala
+def process(messages: Chunk[Message.ReadOnly]): Task[Unit] = 
+  ZIO.debug(messages.map(_.body.getOrElse(""))) *> ZIO.sleep(14.seconds)
+
+val consumerExample =
+  SqsStream.consumeChunkAtLeastOnce(
+    queueUrl = queueUrl,
+    settings = SqsStreamSettings.default
+      .withMaxNumberOfMessages(10)
+      .withVisibilityTimeout(5)
+      .withWaitTimeSeconds(20),
+    extensionSettings = SqsMessageLifetimeExtensionSettings.default,
+    consumerParallelism = 2
+  )(process)
+```
+
+If the `process` function fails, then messages will not be deleted from the queue and will be available for the next consumer to pull.

@@ -312,15 +312,14 @@ object ProducerSpec extends ZIOSpecDefault {
                        .run(ZSink.head[Chunk[ProducerEvent[String]]])
                        .someOrFailException
           results <- ZIO.scoped {
-                       serverResource *> {
-                         for {
+                       serverResource *>
+                         (for {
                            _        <- withFastClock.fork
                            _        <- Utils.createQueue(queueName)
                            queueUrl <- Utils.getQueueUrl(queueName)
-                           producer <- ZIO.succeed(Producer.make(queueUrl, Serializer.serializeString, settings))
-                           results  <- ZIO.scoped(producer.flatMap(p => p.produceBatchE(events)))
-                         } yield results
-                       }
+                           producer <- Producer.make(queueUrl, Serializer.serializeString, settings)
+                           results  <- producer.produceBatchE(events)
+                         } yield results)
                      }
         } yield assert(results.size)(equalTo(events.size)) &&
           assert(results.forall(_.isRight))(isTrue)
@@ -384,12 +383,12 @@ object ProducerSpec extends ZIOSpecDefault {
                             val producer = Producer.make(queueUrl, Serializer.serializeString, settings)
                             producer.flatMap(p => ZStream.succeed(events).run(p.sendSink)).either
                           }.provide(client)
-        } yield assert(errOrResults.isLeft)(isTrue)
+        } yield assertTrue(errOrResults.isLeft)
       },
       test("events that published using sendSink and return an unrecoverable error should fail the sink on error") {
         val queueName                  = "sendSink-" + UUID.randomUUID().toString
         val queueUrl                   = s"sqs://$queueName"
-        val settings: ProducerSettings = ProducerSettings()
+        val settings: ProducerSettings = ProducerSettings().copy(retryMaxCount = 0)
         val events                     = List("A").map(ProducerEvent(_))
         val client                     = failUnrecoverableClient
 
@@ -399,7 +398,7 @@ object ProducerSpec extends ZIOSpecDefault {
                             val producer = Producer.make(queueUrl, Serializer.serializeString, settings)
                             producer.flatMap(p => ZStream.succeed(events).run(p.sendSink)).either
                           }.provide(client)
-        } yield assert(errOrResults.isLeft)(isTrue)
+        } yield assertTrue(errOrResults.isLeft)
       },
       test("submitted events can succeed and fail if there are unrecoverable errors") {
         val queueName                  = "success-and-unrecoverable-failures-" + UUID.randomUUID().toString
@@ -479,14 +478,15 @@ object ProducerSpec extends ZIOSpecDefault {
 
         for {
           _       <- withFastClock.fork
-          results <- ZIO.scoped {
-                       val producer = Producer.make(queueUrl, Serializer.serializeString, settings)
-                       producer.flatMap(p => p.produceBatchE(events))
-                     }.provide(client)
+          results <- ZIO
+                       .scoped(
+                         Producer
+                           .make(queueUrl, Serializer.serializeString, settings)
+                           .flatMap(_.produceBatchE(events))
+                       )
+                       .provide(client)
         } yield {
-          val successes = results.filter(_.isRight).collect {
-            case Right(x) => x.data
-          }
+          val successes = results.collect { case Right(x) => x.data }
 
           assert(results.size)(equalTo(events.size)) &&
           assert(successes)(hasSameElements(List("A", "B", "C"))) &&
@@ -523,13 +523,12 @@ object ProducerSpec extends ZIOSpecDefault {
         for {
           _       <- withFastClock.fork
           results <- ZIO.scoped {
-                       val producer = Producer.make(queueUrl, Serializer.serializeString, settings)
-                       producer.flatMap(p => p.produceBatchE(events))
+                       Producer
+                         .make(queueUrl, Serializer.serializeString, settings)
+                         .flatMap(_.produceBatchE(events))
                      }.provide(client)
         } yield {
-          val failures = results.filter(_.isLeft).collect {
-            case Left(x) => x.event.data
-          }
+          val failures = results.collect { case Left(x) => x.event.data }
 
           assert(results.size)(equalTo(events.size)) &&
           assert(failures)(hasSameElements(List("A", "B", "C"))) &&
@@ -615,7 +614,7 @@ object ProducerSpec extends ZIOSpecDefault {
     ).provideSomeLayerShared[TestEnvironment]((zio.aws.netty.NettyHttpClient.default >>> zio.aws.core.config.AwsConfig.default >>> clientResource).orDie)
 
   override def aspects: Chunk[TestAspect[Nothing, TestEnvironment, Nothing, Any]] =
-    Chunk(TestAspect.executionStrategy(ExecutionStrategy.Sequential))
+    Chunk(TestAspect.executionStrategy(ExecutionStrategy.Sequential), TestAspect.timeout(60.seconds))
 
   def queueResource(capacity: Int): ZIO[Scope, Throwable, Queue[SqsRequestEntry[String]]] =
     ZIO.acquireRelease(Queue.bounded[SqsRequestEntry[String]](capacity))(_.shutdown)

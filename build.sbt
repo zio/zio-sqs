@@ -19,7 +19,7 @@ inThisBuild(
     run / fork := true,
     ciJvmOptions ++= Seq("-Xms6G", "-Xmx6G", "-Xss4M", "-XX:+UseG1GC"),
     ciEnabledBranches := List("series/2.x"),
-    ciTargetJavaVersions := List("17", "21", "24"),
+    ciTargetJavaVersions := List("17", "21"),
     developers := List(
       Developer(
         "ghostdogpr",

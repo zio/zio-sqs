@@ -230,7 +230,6 @@ object ProducerSpec extends ZIOSpecDefault {
           results <- ZIO.scoped {
                        serverResource *> {
                          for {
-                           _           <- withFastClock.fork
                            _           <- Utils.createQueue(queueName)
                            queueUrl    <- Utils.getQueueUrl(queueName)
                            producer     = Producer.make(queueUrl, Serializer.serializeString, settings)
@@ -254,7 +253,6 @@ object ProducerSpec extends ZIOSpecDefault {
         val client                     = failUnrecoverableClient
 
         for {
-          _           <- withFastClock.fork
           errOrResult <- ZIO.scoped {
                            val producer = Producer.make(queueUrl, Serializer.serializeString, settings)
                            producer.flatMap(p => p.sendStream(ZStream(events: _*)).runDrain.either)
@@ -274,7 +272,6 @@ object ProducerSpec extends ZIOSpecDefault {
           results <- ZIO.scoped {
                        serverResource *> {
                          for {
-                           _        <- withFastClock.fork
                            _        <- Utils.createQueue(queueName)
                            queueUrl <- Utils.getQueueUrl(queueName)
                            producer  = Producer.make(queueUrl, Serializer.serializeString, settings)
@@ -294,12 +291,11 @@ object ProducerSpec extends ZIOSpecDefault {
         val client                     = failUnrecoverableClient
 
         for {
-          _            <- withFastClock.fork
           errOrResults <- ZIO.scoped {
                             val producer = Producer.make(queueUrl, Serializer.serializeString, settings)
                             producer.flatMap(p => ZIO.foreachPar(events)(event => p.produce(event))).either
                           }.provide(client)
-        } yield assert(errOrResults.isLeft)(isTrue)
+        } yield assertTrue(errOrResults.isLeft)
       },
       test("events can be published using produceBatch and return the results") {
         val queueName                  = "produceBatch-" + UUID.randomUUID().toString
@@ -314,7 +310,6 @@ object ProducerSpec extends ZIOSpecDefault {
           results <- ZIO.scoped {
                        serverResource *>
                          (for {
-                           _        <- withFastClock.fork
                            _        <- Utils.createQueue(queueName)
                            queueUrl <- Utils.getQueueUrl(queueName)
                            producer <- Producer.make(queueUrl, Serializer.serializeString, settings)
@@ -332,7 +327,6 @@ object ProducerSpec extends ZIOSpecDefault {
         val client                     = failUnrecoverableClient
 
         for {
-          _            <- withFastClock.fork
           errOrResults <- ZIO.scoped {
                             val producer = Producer.make(queueUrl, Serializer.serializeString, settings)
                             producer.flatMap(p => p.produceBatch(events)).either
@@ -350,15 +344,13 @@ object ProducerSpec extends ZIOSpecDefault {
                        .run(ZSink.head[Chunk[ProducerEvent[String]]])
                        .someOrFailException
           results <- ZIO.scoped {
-                       serverResource *> {
-                         for {
-                           _        <- withFastClock.fork
+                       serverResource *>
+                         (for {
                            _        <- Utils.createQueue(queueName)
                            queueUrl <- Utils.getQueueUrl(queueName)
                            producer  = Producer.make(queueUrl, Serializer.serializeString, settings)
                            results  <- ZIO.scoped(producer.flatMap(p => ZStream.succeed(events).run(p.sendSink)))
-                         } yield results
-                       }
+                         } yield results)
                      }
         } yield assert(results)(equalTo(()))
       },
@@ -378,7 +370,6 @@ object ProducerSpec extends ZIOSpecDefault {
         }
 
         for {
-          _            <- withFastClock.fork
           errOrResults <- ZIO.scoped {
                             val producer = Producer.make(queueUrl, Serializer.serializeString, settings)
                             producer.flatMap(p => ZStream.succeed(events).run(p.sendSink)).either
@@ -393,7 +384,6 @@ object ProducerSpec extends ZIOSpecDefault {
         val client                     = failUnrecoverableClient
 
         for {
-          _            <- withFastClock.fork
           errOrResults <- ZIO.scoped {
                             val producer = Producer.make(queueUrl, Serializer.serializeString, settings)
                             producer.flatMap(p => ZStream.succeed(events).run(p.sendSink)).either
@@ -428,7 +418,6 @@ object ProducerSpec extends ZIOSpecDefault {
         }
 
         for {
-          _       <- withFastClock.fork
           results <- ZIO.scoped {
                        val producer = Producer.make(queueUrl, Serializer.serializeString, settings)
                        producer.flatMap(p => p.produceBatchE(events))
@@ -477,7 +466,6 @@ object ProducerSpec extends ZIOSpecDefault {
         }
 
         for {
-          _       <- withFastClock.fork
           results <- ZIO
                        .scoped(
                          Producer
@@ -521,7 +509,6 @@ object ProducerSpec extends ZIOSpecDefault {
         }
 
         for {
-          _       <- withFastClock.fork
           results <- ZIO.scoped {
                        Producer
                          .make(queueUrl, Serializer.serializeString, settings)
@@ -551,7 +538,6 @@ object ProducerSpec extends ZIOSpecDefault {
         }
 
         for {
-          _            <- withFastClock.fork
           errOrResults <- ZIO.scoped {
                             val producer = Producer.make(queueUrl, Serializer.serializeString, settings)
                             producer.flatMap(p => p.produceBatchE(events)).either
@@ -580,7 +566,6 @@ object ProducerSpec extends ZIOSpecDefault {
         }
 
         for {
-          _       <- withFastClock.fork
           results <- ZIO.scoped {
                        val producer = Producer.make(queueUrl, Serializer.serializeString, settings)
                        producer.flatMap(p => ZIO.foreach(events)(e => ZIO.sleep(100.milliseconds) *> p.produce(e).either))
@@ -599,13 +584,11 @@ object ProducerSpec extends ZIOSpecDefault {
         val client                     = failUnrecoverableClient
 
         for {
-          _               <- withFastClock.fork
           scope           <- Scope.make
           producerPromise <- Producer
                                .make[String](queueUrl, Serializer.serializeString, settings)
                                .provide(client, ZLayer.succeed(scope))
                                .fork
-
           producer        <- producerPromise.await.flatten
 
           errOrResults <- producer.produceBatch(events).either
@@ -614,7 +597,7 @@ object ProducerSpec extends ZIOSpecDefault {
     ).provideSomeLayerShared[TestEnvironment]((zio.aws.netty.NettyHttpClient.default >>> zio.aws.core.config.AwsConfig.default >>> clientResource).orDie)
 
   override def aspects: Chunk[TestAspect[Nothing, TestEnvironment, Nothing, Any]] =
-    Chunk(TestAspect.executionStrategy(ExecutionStrategy.Sequential), TestAspect.timeout(60.seconds))
+    Chunk(TestAspect.executionStrategy(ExecutionStrategy.Sequential), TestAspect.timeout(60.seconds), TestAspect.withLiveEnvironment)
 
   def queueResource(capacity: Int): ZIO[Scope, Throwable, Queue[SqsRequestEntry[String]]] =
     ZIO.acquireRelease(Queue.bounded[SqsRequestEntry[String]](capacity))(_.shutdown)

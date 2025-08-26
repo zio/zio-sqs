@@ -64,6 +64,7 @@ object ZioSqsSpec extends ZIOSpecDefault {
         val settings: SqsStreamSettings = SqsStreamSettings.default.withStopWhenQueueEmpty(true).withWaitTimeSeconds(1)
         val program                     =
           for {
+            _                 <- withFastClock.fork
             _                 <- serverResource
             _                 <- Utils.createQueue(queueName)
             queueUrl          <- Utils.getQueueUrl(queueName)
@@ -81,7 +82,7 @@ object ZioSqsSpec extends ZIOSpecDefault {
           } yield assert(list)(isEmpty) && assert(messagesFromQueue.map(_.body.getOrElse("")))(hasSameElements(messages))
 
         ZIO.scoped(program)
-      } @@ TestAspect.withLiveClock,
+      },
       test("consumeChunkAtLeastOnce will not delete messages if there is an error encountered when processing") {
         val settings = SqsStreamSettings.default
           .withStopWhenQueueEmpty(true)
@@ -91,6 +92,7 @@ object ZioSqsSpec extends ZIOSpecDefault {
 
         val program =
           for {
+            _              <- withFastClock.fork
             _              <- serverResource
             messages       <- gen.runHead.someOrFailException
             _              <- Utils.createQueue(queueName)
@@ -109,7 +111,7 @@ object ZioSqsSpec extends ZIOSpecDefault {
             actualMessages  = actual.map(_.body.getOrElse(""))
           } yield assert(actualMessages)(hasSameElements(messages))
         ZIO.scoped(program)
-      } @@ TestAspect.withLiveClock,
+      },
       test("consumeChunkAtLeastOnce will automatically extend message lifetime and delete messages after successful processing") {
         val settings = SqsStreamSettings.default
           .withStopWhenQueueEmpty(true)
@@ -118,24 +120,25 @@ object ZioSqsSpec extends ZIOSpecDefault {
           .withMaxNumberOfMessages(10000)
 
         val program = for {
+          _              <- withFastClock.fork
           _              <- serverResource
           messages       <- gen.runHead.someOrFailException
           _              <- Utils.createQueue(queueName)
           queueUrl       <- Utils.getQueueUrl(queueName)
-          producer        = Producer.make(queueUrl, Serializer.serializeString)
-          _              <- ZIO.scoped(producer.flatMap(p => ZIO.foreach(messages)(msg => p.produce(ProducerEvent(msg)))))
-          messagePromise <- Promise.make[Nothing, Chunk[Message.ReadOnly]]
+          producer       <- Producer.make(queueUrl, Serializer.serializeString)
+          _              <- producer.produceBatch(messages.map(ProducerEvent(_)))
+          messagePromise <- Promise.make[Nothing, Chunk[String]]
           _              <- consumeChunkAtLeastOnce(queueUrl, settings, SqsMessageLifetimeExtensionSettings.default) { msgs =>
-                              ZIO.sleep(2500.millis) *> messagePromise.succeed(msgs).unit
+                              ZIO.sleep(2400.millis) *> messagePromise.succeed(msgs.map(_.body.getOrElse(""))).unit
                             }
           _              <- consumeChunkAtLeastOnce(queueUrl, settings, SqsMessageLifetimeExtensionSettings.default) { msgs =>
                               ZIO.fail(new RuntimeException(s"Should not be called because the previous call should have processed all messages ($msgs)"))
                             }
           actual         <- messagePromise.await
-        } yield assert(actual.map(_.body.getOrElse("")))(equalTo(messages))
+        } yield assertTrue(actual.sorted == messages.sorted)
 
         ZIO.scoped(program)
-      } @@ TestAspect.withLiveClock
+      }
     ).provideSomeLayerShared[TestEnvironment]((zio.aws.netty.NettyHttpClient.default >>> zio.aws.core.config.AwsConfig.default >>> clientResource).orDie)
 
   override def aspects: Chunk[TestAspect[Nothing, TestEnvironment, Nothing, Any]] =

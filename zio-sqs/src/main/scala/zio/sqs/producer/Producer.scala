@@ -1,11 +1,13 @@
 package zio.sqs.producer
 
+import zio.Duration
+import zio._
 import zio.aws.sqs.Sqs
 import zio.aws.sqs.model._
-import zio._
-import zio.Duration
 import zio.sqs.serialization.Serializer
-import zio.stream.{ Stream, ZSink, ZStream }
+import zio.stream.Stream
+import zio.stream.ZSink
+import zio.stream.ZStream
 
 import scala.util.control.NonFatal
 

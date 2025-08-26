@@ -1,7 +1,7 @@
 package zio.sqs
 
-import zio.test._
 import zio._
+import zio.test._
 
 package object testing {
 

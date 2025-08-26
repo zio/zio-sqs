@@ -1,8 +1,10 @@
 package zio.sqs
 
-import zio.aws.sqs.Sqs
-import zio.aws.sqs.model.{ CreateQueueRequest, GetQueueUrlRequest, QueueAttributeName }
 import zio.RIO
+import zio.aws.sqs.Sqs
+import zio.aws.sqs.model.CreateQueueRequest
+import zio.aws.sqs.model.GetQueueUrlRequest
+import zio.aws.sqs.model.QueueAttributeName
 
 object Utils {
   def createQueue(

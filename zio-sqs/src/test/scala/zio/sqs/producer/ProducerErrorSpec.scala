@@ -1,10 +1,11 @@
 package zio.sqs.producer
 
+import zio.Chunk
+import zio.ExecutionStrategy
 import zio.aws.sqs.model.BatchResultErrorEntry
-import zio.{ Chunk, ExecutionStrategy }
 import zio.test.Assertion._
-import zio.test._
 import zio.test.TestEnvironment
+import zio.test._
 
 object ProducerErrorSpec extends ZIOSpecDefault {
 

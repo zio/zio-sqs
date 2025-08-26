@@ -1,13 +1,17 @@
 package examples
 
+import software.amazon.awssdk.auth.credentials.AwsBasicCredentials
+import software.amazon.awssdk.auth.credentials.StaticCredentialsProvider
+import software.amazon.awssdk.regions.Region
+import zio._
 import zio.aws.core.config.CommonAwsConfig
 import zio.aws.sqs.Sqs
-import software.amazon.awssdk.auth.credentials.{ AwsBasicCredentials, StaticCredentialsProvider }
-import software.amazon.awssdk.regions.Region
-import zio.sqs.producer.{ Producer, ProducerEvent }
+import zio.sqs.SqsStream
+import zio.sqs.SqsStreamSettings
+import zio.sqs.Utils
+import zio.sqs.producer.Producer
+import zio.sqs.producer.ProducerEvent
 import zio.sqs.serialization.Serializer
-import zio.sqs.{ SqsStream, SqsStreamSettings, Utils }
-import zio._
 
 object AtMostOnceExample extends zio.ZIOAppDefault {
   val queueName = "TestQueue"

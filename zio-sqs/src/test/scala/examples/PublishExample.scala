@@ -1,11 +1,13 @@
 package examples
 
+import zio.RIO
+import zio.ZIO
+import zio.ZLayer
 import zio.aws.sqs.Sqs
 import zio.sqs._
 import zio.sqs.producer._
 import zio.sqs.serialization._
 import zio.stream._
-import zio.{ RIO, ZIO, ZLayer }
 
 object PublishExample extends zio.ZIOAppDefault {
 

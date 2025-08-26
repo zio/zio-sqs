@@ -1,9 +1,10 @@
 package zio.sqs.serialization
 
-import zio.{ Chunk, ExecutionStrategy }
+import zio.Chunk
+import zio.ExecutionStrategy
 import zio.test.Assertion._
-import zio.test._
 import zio.test.TestEnvironment
+import zio.test._
 
 object SerializerSpec extends ZIOSpecDefault {
 

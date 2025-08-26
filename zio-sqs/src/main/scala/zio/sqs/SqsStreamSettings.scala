@@ -1,7 +1,7 @@
 package zio.sqs
 
-import zio.aws.sqs.model._
 import zio._
+import zio.aws.sqs.model._
 
 /**
  * Configuration settings for consuming messages from an SQS queue.

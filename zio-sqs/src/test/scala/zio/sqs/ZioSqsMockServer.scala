@@ -1,15 +1,19 @@
 package zio.sqs
 
-import java.net.URI
+import org.elasticmq.NodeAddress
+import org.elasticmq.RelaxedSQSLimits
+import org.elasticmq.rest.sqs.SQSRestServer
+import org.elasticmq.rest.sqs.TheSQSRestServerBuilder
+import software.amazon.awssdk.auth.credentials.AwsBasicCredentials
+import software.amazon.awssdk.auth.credentials.StaticCredentialsProvider
+import software.amazon.awssdk.regions.Region
+import zio.Scope
+import zio.ZIO
+import zio.ZLayer
 import zio.aws.core.config.AwsConfig
 import zio.aws.sqs.Sqs
-import org.elasticmq.rest.sqs.SQSRestServer
-import org.elasticmq.RelaxedSQSLimits
-import org.elasticmq.rest.sqs.TheSQSRestServerBuilder
-import org.elasticmq.NodeAddress
-import software.amazon.awssdk.auth.credentials.{ AwsBasicCredentials, StaticCredentialsProvider }
-import software.amazon.awssdk.regions.Region
-import zio.{ Scope, ZIO, ZLayer }
+
+import java.net.URI
 
 object ZioSqsMockServer extends TheSQSRestServerBuilder(None, None, "", 9324, NodeAddress(), true, RelaxedSQSLimits, "elasticmq", "000000000000", None) {
   private val staticCredentialsProvider: StaticCredentialsProvider =

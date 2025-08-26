@@ -1,22 +1,27 @@
 package zio.sqs.producer
 
-import java.util.UUID
-import java.util.concurrent.atomic.AtomicInteger
-
-import zio.aws.core.{ aspects, AwsError }
-import zio.aws.sqs.model._
-import zio.aws.sqs.{ model, Sqs }
 import software.amazon.awssdk.services.sqs.SqsAsyncClient
-import zio.sqs.ZioSqsMockServer._
-import zio.sqs.producer.Producer.{ DefaultProducer, SqsRequest, SqsRequestEntry, SqsResponseErrorEntry }
-import zio.sqs.serialization.Serializer
+import zio.aws.core.AwsError
+import zio.aws.core.aspects
+import zio.aws.sqs.Sqs
+import zio.aws.sqs.model
+import zio.aws.sqs.model._
 import zio.sqs.Utils
-import zio.stream.{ ZSink, ZStream }
+import zio.sqs.ZioSqsMockServer._
+import zio.sqs.producer.Producer.DefaultProducer
+import zio.sqs.producer.Producer.SqsRequest
+import zio.sqs.producer.Producer.SqsRequestEntry
+import zio.sqs.producer.Producer.SqsResponseErrorEntry
+import zio.sqs.serialization.Serializer
+import zio.sqs.testing._
+import zio.stream.ZSink
+import zio.stream.ZStream
 import zio.test.Assertion._
 import zio.test._
 import zio.{ test => _, _ }
-import zio.sqs.testing._
 
+import java.util.UUID
+import java.util.concurrent.atomic.AtomicInteger
 import scala.language.implicitConversions
 
 object ProducerSpec extends ZIOSpecDefault {

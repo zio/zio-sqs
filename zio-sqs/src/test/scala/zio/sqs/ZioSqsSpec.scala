@@ -1,16 +1,19 @@
 package zio.sqs
 
+import zio._
 import zio.aws.sqs.Sqs
 import zio.aws.sqs.model.Message
-import zio._
+import zio.sqs.SqsStream.consumeChunkAtLeastOnce
 import zio.sqs.ZioSqsMockServer._
-import zio.sqs.producer.{ Producer, ProducerEvent }
+import zio.sqs.producer.Producer
+import zio.sqs.producer.ProducerEvent
 import zio.sqs.serialization.Serializer
 import zio.test.Assertion._
+import zio.test.Live
+import zio.test.TestEnvironment
 import zio.test._
-import zio.test.{ Live, TestEnvironment }
+
 import testing._
-import zio.sqs.SqsStream.consumeChunkAtLeastOnce
 
 object ZioSqsSpec extends ZIOSpecDefault {
 

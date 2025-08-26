@@ -1,12 +1,14 @@
 package zio.sqs.producer
 
-import java.util.concurrent.TimeUnit
-
+import zio.Chunk
+import zio.Duration
+import zio.ExecutionStrategy
 import zio.aws.sqs.model.MessageAttributeValue
-import zio.{ Chunk, Duration, ExecutionStrategy }
 import zio.test.Assertion._
-import zio.test._
 import zio.test.TestEnvironment
+import zio.test._
+
+import java.util.concurrent.TimeUnit
 
 object ProducerEventSpec extends ZIOSpecDefault {
 

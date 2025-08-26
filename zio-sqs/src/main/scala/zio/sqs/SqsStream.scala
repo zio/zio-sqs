@@ -1,13 +1,18 @@
 package zio.sqs
 
-import zio.aws.sqs._
-import zio.aws.sqs.model._
-import zio.{ Chunk, Exit, RIO, Task, ZIO, ZIOAspect }
-import zio.stream.ZStream
-import zio.aws.sqs.model.primitives.MessageAttributeName
+import zio.Chunk
+import zio.Exit
+import zio.RIO
+import zio.Task
+import zio.ZIO
+import zio.ZIOAspect
 import zio.aws.core.AwsError
 import zio.aws.core.GenericAwsError
+import zio.aws.sqs._
+import zio.aws.sqs.model._
+import zio.aws.sqs.model.primitives.MessageAttributeName
 import zio.stream.ZSink
+import zio.stream.ZStream
 
 object SqsStream {
 

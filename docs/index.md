@@ -48,7 +48,7 @@ object ProducerConsumerExample extends ZIOAppDefault {
     _        <- SqsStream(
                   queueUrl,
                   SqsStreamSettings.default
-                    .withAutoDelete(true)
+                    .withAutoDelete(true) // at-most-once delivery semantics
                     .withStopWhenQueueEmpty(true)
                     .withWaitTimeSeconds(3)
                 ).foreach(msg => Console.printLine(msg.body))

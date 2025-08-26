@@ -1,15 +1,15 @@
 package examples
 
+import software.amazon.awssdk.auth.credentials._
+import software.amazon.awssdk.regions.Region
 import zio._
-import zio.sqs.producer._
-import zio.sqs.serialization.Serializer
+import zio.aws.core.config._
 import zio.aws.netty.NettyHttpClient
 import zio.aws.sqs.Sqs
-import zio.aws.core.config._
-import software.amazon.awssdk.regions.Region
-import software.amazon.awssdk.auth.credentials._
-import zio.sqs._
 import zio.aws.sqs.model.Message
+import zio.sqs._
+import zio.sqs.producer._
+import zio.sqs.serialization.Serializer
 
 object AtLeastOnceExample extends ZIOAppDefault {
   val queueUrl = "https://sqs.us-east-1.amazonaws.com/00000/calq.fifo"

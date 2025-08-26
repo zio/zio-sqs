@@ -4,8 +4,11 @@ val zioVersion       = "2.1.20"
 val zioAwsVersion    = "7.31.52.2"
 val elasticMqVersion = "1.6.14"
 
+enablePlugins(ZioSbtEcosystemPlugin, ZioSbtCiPlugin)
+
 inThisBuild(
   List(
+    name := "ZIO SQS",
     organization := "dev.zio",
     homepage := Some(url("https://zio.dev/zio-sqs")),
     licenses := List("Apache-2.0" -> url("http://www.apache.org/licenses/LICENSE-2.0")),
@@ -14,39 +17,24 @@ inThisBuild(
     Test / parallelExecution := false,
     Test / fork := true,
     run / fork := true,
-    pgpPassphrase := sys.env.get("PGP_PASSWORD").map(_.toArray),
-    pgpPublicRing := file("/tmp/public.asc"),
-    pgpSecretRing := file("/tmp/secret.asc"),
-    scmInfo := Some(
-      ScmInfo(url("https://github.com/zio/zio-sqs/"), "scm:git:git@github.com:zio/zio-sqs.git")
-    ),
+    ciJvmOptions ++= Seq("-Xms6G", "-Xmx6G", "-Xss4M", "-XX:+UseG1GC"),
+    ciEnabledBranches := List("series/2.x"),
+    ciTargetJavaVersions := List("17", "21", "24"),
     developers := List(
       Developer(
         "ghostdogpr",
         "Pierre Ricadat",
         "ghostdogpr@gmail.com",
         url("https://github.com/ghostdogpr")
+      ),
+      Developer(
+        "calvinlfer",
+        "Calvin Fernandes",
+        "cal@kaizen-solutions.io",
+        url("https://github.com/calvinlfer")
       )
     ),
-    githubWorkflowTargetTags ++= Seq("v*"),
-    githubWorkflowPublishTargetBranches := Seq(RefPredicate.StartsWith(Ref.Tag("v"))),
-    githubWorkflowJavaVersions := List(
-      JavaSpec.temurin("11"),
-      JavaSpec.temurin("17"),
-      JavaSpec.temurin("21")
-    ),
-    githubWorkflowPublish := Seq(
-      WorkflowStep.Sbt(
-        commands = List("ci-release"),
-        name = Some("Publish project"),
-        env = Map(
-          "PGP_PASSPHRASE"    -> "${{ secrets.PGP_PASSPHRASE }}",
-          "PGP_SECRET"        -> "${{ secrets.PGP_SECRET }}",
-          "SONATYPE_PASSWORD" -> "${{ secrets.SONATYPE_PASSWORD }}",
-          "SONATYPE_USERNAME" -> "${{ secrets.SONATYPE_USERNAME }}"
-        )
-      )
-    )
+    semanticdbEnabled := true
   )
 )
 
@@ -133,6 +121,7 @@ lazy val sqs =
 
 lazy val docs = project
   .in(file("zio-sqs-docs"))
+  .enablePlugins(WebsitePlugin)
   .settings(
     moduleName := "zio-sqs-docs",
     scalacOptions -= "-Yno-imports",
@@ -140,10 +129,6 @@ lazy val docs = project
     projectName := "ZIO SQS",
     mainModuleName := (sqs / moduleName).value,
     projectStage := ProjectStage.ProductionReady,
-    ScalaUnidoc / unidoc / unidocProjectFilter := inProjects(sqs),
-    libraryDependencies ++= Seq(
-      "dev.zio" %% "zio" % zioVersion
-    )
+    ScalaUnidoc / unidoc / unidocProjectFilter := inProjects(sqs)
   )
   .dependsOn(sqs)
-  .enablePlugins(WebsitePlugin)

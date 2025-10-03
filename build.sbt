@@ -70,7 +70,7 @@ lazy val sqs =
         "org.elasticmq"          %% "elasticmq-core"          % elasticMqVersion % "test"
       ) ++ (CrossVersion.partialVersion(scalaVersion.value) match {
         case Some((2, 12 | 13)) =>
-          Seq("org.typelevel" %% "kind-projector" % "0.13.3" cross CrossVersion.full)
+          Seq("org.typelevel" %% "kind-projector" % "0.13.4" cross CrossVersion.full)
         case _                  =>
           Nil
       }),

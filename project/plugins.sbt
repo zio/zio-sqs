@@ -5,7 +5,7 @@ addSbtPlugin("dev.zio" % "zio-sbt-website"   % zioSbtVersion)
 
 addSbtPlugin("org.scalameta"    % "sbt-scalafmt"       % "2.5.6")
 addSbtPlugin("ch.epfl.scala"    % "sbt-scalafix"       % "0.14.4")
-addSbtPlugin("com.github.sbt"   % "sbt-github-actions" % "0.28.0")
+addSbtPlugin("com.github.sbt"   % "sbt-github-actions" % "0.29.0")
 addSbtPlugin("com.timushev.sbt" % "sbt-updates"        % "0.6.4")
 
 resolvers ++= Resolver.sonatypeOssRepos("public")

@@ -25,7 +25,7 @@ jobs:
     continue-on-error: true
     steps:
     - name: Git Checkout
-      uses: actions/checkout@v5
+      uses: actions/checkout@v6
       with:
         fetch-depth: '0'
     - name: Install libuv
@@ -39,7 +39,7 @@ jobs:
     - name: Setup SBT
       uses: sbt/setup-sbt@v1
     - name: Cache Dependencies
-      uses: coursier/cache-action@v6
+      uses: coursier/cache-action@v7
     - name: Check all code compiles
       run: sbt +Test/compile
     - name: Check artifacts build process
@@ -52,7 +52,7 @@ jobs:
     continue-on-error: false
     steps:
     - name: Git Checkout
-      uses: actions/checkout@v5
+      uses: actions/checkout@v6
       with:
         fetch-depth: '0'
     - name: Install libuv
@@ -66,7 +66,7 @@ jobs:
     - name: Setup SBT
       uses: sbt/setup-sbt@v1
     - name: Cache Dependencies
-      uses: coursier/cache-action@v6
+      uses: coursier/cache-action@v7
     - name: Check if the site workflow is up to date
       run: sbt ciCheckGithubWorkflow
     - name: Lint
@@ -93,9 +93,9 @@ jobs:
     - name: Setup SBT
       uses: sbt/setup-sbt@v1
     - name: Cache Dependencies
-      uses: coursier/cache-action@v6
+      uses: coursier/cache-action@v7
     - name: Git Checkout
-      uses: actions/checkout@v5
+      uses: actions/checkout@v6
       with:
         fetch-depth: '0'
     - name: Test
@@ -104,10 +104,10 @@ jobs:
     name: Update README
     runs-on: ubuntu-latest
     continue-on-error: false
-    if: ${{ github.event_name == 'push' }}
+    if: ${{ github.ref == format('refs/heads/{0}', github.event.repository.default_branch) }}
     steps:
     - name: Git Checkout
-      uses: actions/checkout@v5
+      uses: actions/checkout@v6
       with:
         fetch-depth: '0'
     - name: Install libuv
@@ -121,7 +121,7 @@ jobs:
     - name: Setup SBT
       uses: sbt/setup-sbt@v1
     - name: Cache Dependencies
-      uses: coursier/cache-action@v6
+      uses: coursier/cache-action@v7
     - name: Generate Readme
       run: sbt docs/generateReadme
     - name: Commit Changes
@@ -183,7 +183,7 @@ jobs:
     if: ${{ github.event_name != 'pull_request' }}
     steps:
     - name: Git Checkout
-      uses: actions/checkout@v5
+      uses: actions/checkout@v6
       with:
         fetch-depth: '0'
     - name: Install libuv
@@ -197,7 +197,7 @@ jobs:
     - name: Setup SBT
       uses: sbt/setup-sbt@v1
     - name: Cache Dependencies
-      uses: coursier/cache-action@v6
+      uses: coursier/cache-action@v7
     - name: Release
       run: sbt ci-release
       env:
@@ -214,7 +214,7 @@ jobs:
     if: ${{ ((github.event_name == 'release') && (github.event.action == 'published')) || (github.event_name == 'workflow_dispatch') }}
     steps:
     - name: Git Checkout
-      uses: actions/checkout@v5
+      uses: actions/checkout@v6
       with:
         fetch-depth: '0'
     - name: Install libuv
@@ -228,7 +228,7 @@ jobs:
     - name: Setup SBT
       uses: sbt/setup-sbt@v1
     - name: Cache Dependencies
-      uses: coursier/cache-action@v6
+      uses: coursier/cache-action@v7
     - name: Setup NodeJs
       uses: actions/setup-node@v6
       with:
@@ -247,7 +247,7 @@ jobs:
     if: ${{ (github.event_name == 'release') && (github.event.action == 'published') }}
     steps:
     - name: Git Checkout
-      uses: actions/checkout@v5
+      uses: actions/checkout@v6
       with:
         fetch-depth: '0'
     - name: notify the main repo about the new release of docs package

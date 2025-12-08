@@ -78,7 +78,6 @@ jobs:
         os: [ubuntu-latest]
         scala: [3.3.7, 2.13.17]
         java: [zulu@8]
-    runs-on: ${{ matrix.os }}
     steps:
     - name: Install libuv
       run: sudo apt-get update && sudo apt-get install -y libuv1-dev

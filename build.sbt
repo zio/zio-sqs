@@ -2,7 +2,7 @@ val mainScala         = "2.13.18"
 val allScala          = Seq("3.3.7", "2.13.18")
 val zioVersion        = "2.1.26"
 val zioAwsVersion     = "7.44.6.1"
-val elasticMqVersion  = "1.6.16"
+val elasticMqVersion  = "1.7.1"
 val semanticDbVersion = "4.14.1"
 
 enablePlugins(ZioSbtEcosystemPlugin, ZioSbtCiPlugin)

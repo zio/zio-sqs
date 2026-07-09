@@ -1,5 +1,5 @@
 val mainScala         = "2.13.18"
-val allScala          = Seq("3.3.7", "2.13.18")
+val allScala          = Seq("3.3.8", "2.13.18")
 val zioVersion        = "2.1.26"
 val zioAwsVersion     = "7.46.17.1"
 val elasticMqVersion  = "1.7.1"

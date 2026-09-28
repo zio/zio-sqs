@@ -1,5 +1,16 @@
+import zio.sbt.githubactions.DependencyBot
+
 val mainScala = "2.13.3"
 val allScala  = Seq(mainScala, "2.12.10")
+
+enablePlugins(ZioSbtCiPlugin)
+
+ThisBuild / ciEnabledBranches          := Seq("series/1.x")
+ThisBuild / ciTargetJavaVersions       := Seq("8", "11")
+ThisBuild / ciUpdateReadmeJobs         := Seq.empty
+ThisBuild / ciCheckWebsiteBuildProcess := Seq.empty
+ThisBuild / ciPostReleaseJobs          := Seq.empty
+ThisBuild / ciDependencyUpdateBots     := Seq(DependencyBot.Custom("scala-steward"))
 
 organization := "dev.zio"
 homepage := Some(url("https://github.com/zio/zio-sqs"))
@@ -82,3 +93,4 @@ testFrameworks += new TestFramework("zio.test.sbt.ZTestFramework")
 
 addCommandAlias("fmt", "all scalafmtSbt scalafmt test:scalafmt")
 addCommandAlias("check", "all scalafmtSbtCheck scalafmtCheck test:scalafmtCheck")
+addCommandAlias("lint", "check")

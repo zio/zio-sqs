@@ -8,6 +8,7 @@ const sidebars = {
       items: [
         "getting-started",
         "consuming",
+        "producing",
         "how-to-use"
       ]
     }

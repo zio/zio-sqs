@@ -9,6 +9,7 @@ const sidebars = {
         "getting-started",
         "consuming",
         "producing",
+        "serialization",
         "how-to-use"
       ]
     }

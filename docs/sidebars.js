@@ -7,12 +7,25 @@ const sidebars = {
       link: { type: "doc", id: "index" },
       items: [
         "getting-started",
-        "consuming",
-        "producing",
-        "serialization",
-        "testing-locally",
-        "reference",
-        "how-to-use"
+        {
+          type: "category",
+          label: "Reference",
+          collapsed: false,
+          items: [
+            "reference"
+          ]
+        },
+        {
+          type: "category",
+          label: "How-to Guides",
+          collapsed: false,
+          items: [
+            "consuming",
+            "producing",
+            "serialization",
+            "testing-locally"
+          ]
+        }
       ]
     }
   ]

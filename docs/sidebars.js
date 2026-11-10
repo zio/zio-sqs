@@ -6,7 +6,26 @@ const sidebars = {
       collapsed: false,
       link: { type: "doc", id: "index" },
       items: [
-        "how-to-use"
+        "getting-started",
+        {
+          type: "category",
+          label: "Reference",
+          collapsed: false,
+          items: [
+            "reference"
+          ]
+        },
+        {
+          type: "category",
+          label: "How-to Guides",
+          collapsed: false,
+          items: [
+            "consuming",
+            "producing",
+            "serialization",
+            "testing-locally"
+          ]
+        }
       ]
     }
   ]

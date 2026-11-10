@@ -10,6 +10,7 @@ const sidebars = {
         "consuming",
         "producing",
         "serialization",
+        "testing-locally",
         "reference",
         "how-to-use"
       ]

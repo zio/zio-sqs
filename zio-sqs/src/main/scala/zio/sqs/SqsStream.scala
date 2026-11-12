@@ -229,7 +229,7 @@ object SqsStream {
    * If you use SqsStream with autoDelete = false in conjunction with this sink, you will get at-least-once semantics since
    * the messages will be deleted after they are successfully processed.
    *
-    * @param queueUrl
+   * @param queueUrl
    * @param maximumRetries
    * @return
    */

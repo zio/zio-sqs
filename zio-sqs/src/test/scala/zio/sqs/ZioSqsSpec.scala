@@ -73,7 +73,8 @@ object ZioSqsSpec extends ZIOSpecDefault {
             queueUrl          <- Utils.getQueueUrl(queueName)
             messages          <- gen.runHead.someOrFailException
             _                 <- ZIO.scoped {
-                                   Producer.make(queueUrl, Serializer.serializeString)
+                                   Producer
+                                     .make(queueUrl, Serializer.serializeString)
                                      .flatMap(_.produceBatch(messages.map(ProducerEvent(_))))
                                  }
             messageQueue      <- Queue.unbounded[Message.ReadOnly]

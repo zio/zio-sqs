@@ -7,11 +7,7 @@ ZIO SQS needs an SQS client before it can send or receive messages. The client i
 
 ## Adding the Dependency
 
-Add `zio-sqs` to the `libraryDependencies` in `build.sbt`:
-
-```scala
-libraryDependencies += "dev.zio" %% "zio-sqs" % "@VERSION@"
-```
+To add `zio-sqs` to the project, copy the `libraryDependencies` block from [Installation](./index.md#installation).
 
 ## Creating the Client Layer
 
@@ -66,4 +62,8 @@ object GettingStarted extends ZIOAppDefault {
 }
 ```
 
-`Utils.createQueue` creates the queue when it does not exist. `Utils.getQueueUrl` returns the URL that the producer and the stream need. `Producer.make` returns a producer that lives inside a `Scope`, so the program wraps it in `ZIO.scoped`. The `withAutoDelete(true)` setting deletes each message as soon as it is received. The consuming guide explains the other delivery option.
+`Utils.createQueue` creates the queue when it does not exist. `Utils.getQueueUrl` returns the URL that the producer and the stream need. `Producer.make` returns a producer that lives inside a `Scope`, so the program wraps it in `ZIO.scoped`. The `withAutoDelete(true)` setting deletes each message as soon as it is received. [Consume Messages from a Queue](./how-to/consume-messages-from-a-queue.md) explains the other delivery option.
+
+## Next Steps
+
+To build a complete program that consumes messages, processes them and publishes the results, follow the [tutorial](./tutorials/build-a-queue-worker.md). For one task at a time, see the how-to guides, and for the full API, see the reference pages, starting with [SqsStream](./reference/sqs-stream.md) and [Producer](./reference/producer.md).

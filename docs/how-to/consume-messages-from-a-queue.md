@@ -1,6 +1,6 @@
 ---
-id: consuming
-title: "Consuming Messages"
+id: consume-messages-from-a-queue
+title: "Consume Messages from a Queue"
 ---
 
 `SqsStream.apply` reads messages from a queue as a ZIO stream. Each element is a `Message.ReadOnly`, and the stream keeps long-polling SQS until the program stops reading from it. Two delivery models are available. With at-most-once delivery, the library deletes each message when it is received. With at-least-once delivery, the message is deleted only after the program has finished processing it.
@@ -76,67 +76,7 @@ val drain: ZIO[Sqs, Throwable, Chunk[Message.ReadOnly]] =
 
 Setting `waitTimeSeconds` to a small value, such as 3, makes the empty check return sooner. Long polling still applies, so the stream waits up to that time before it decides that the queue is empty.
 
-## At-Least-Once Processing
-
-`SqsStream.consumeChunkAtLeastOnce` receives a chunk of messages, passes the whole chunk to a `process` function, and deletes the chunk only after `process` succeeds. If `process` fails, the messages stay in the queue. They become visible again when the visibility timeout expires, and another receive call picks them up.
-
-`SqsStream.consumeChunkAtLeastOnce` takes the queue URL, the stream settings, the extension settings, the number of parallel consumers, and the processing function:
-
-```scala mdoc:compile-only
-import zio._
-import zio.aws.sqs.Sqs
-import zio.aws.sqs.model.Message
-import zio.sqs.{SqsMessageLifetimeExtensionSettings, SqsStream, SqsStreamSettings}
-
-val queueUrl = "https://sqs.us-east-1.amazonaws.com/123456789012/MyQueue"
-
-def process(messages: Chunk[Message.ReadOnly]): Task[Unit] =
-  ZIO.debug(messages.map(_.body.getOrElse(""))) *> ZIO.sleep(14.seconds)
-
-val atLeastOnce: RIO[Sqs, Unit] =
-  SqsStream.consumeChunkAtLeastOnce(
-    queueUrl = queueUrl,
-    settings = SqsStreamSettings.default
-      .withMaxNumberOfMessages(10)
-      .withVisibilityTimeout(30)
-      .withWaitTimeSeconds(20),
-    extensionSettings = SqsMessageLifetimeExtensionSettings.default,
-    consumerParallelism = 2
-  )(process)
-```
-
-The `consumerParallelism` argument starts that many independent receive-and-process loops, each one working on its own chunk. The default is `1`. The `maxNumberOfMessages` setting controls how many messages each receive call returns, up to 10.
-
-The `autoDelete` setting has no effect on `SqsStream.consumeChunkAtLeastOnce`, because this function always deletes after processing.
-
-## Extending the Visibility Timeout
-
-Processing a chunk can take longer than the visibility timeout. When that happens, SQS would make the messages visible to other consumers while the first consumer is still working on them. To prevent this, `SqsStream.consumeChunkAtLeastOnce` extends the visibility timeout of the chunk in the background while `process` runs. The extension is controlled by `SqsMessageLifetimeExtensionSettings`:
-
-- `automaticExtension` turns the background extension on or off. It defaults to `true`.
-- `maximumRetries` sets how many times a failed visibility change is retried. It defaults to `16`.
-- `overrideInitialDelay` sets the time before the first extension. By default, the first extension happens at half of the visibility timeout, or after 15 seconds when no visibility timeout is set.
-- `overrideRepeatSchedule` replaces the schedule that repeats the extension. By default, the extension repeats every half visibility timeout.
-
-Each extension request sets the visibility timeout of the chunk again, so the messages stay hidden for as long as processing takes. The extension stops as soon as `process` finishes, whether it succeeded or failed.
-
-For a single long-running message, `SqsStream.extendMessageLifetime` sets the visibility timeout of that message to a value chosen by the program. The following example processes each message for 90 seconds, which is longer than the visibility timeout of 30 seconds, so the message is extended to 120 seconds before the work starts:
-
-```scala mdoc:compile-only
-import zio._
-import zio.aws.sqs.Sqs
-import zio.stream.ZStream
-import zio.sqs.{SqsStream, SqsStreamSettings}
-
-val queueUrl = "https://sqs.us-east-1.amazonaws.com/123456789012/MyQueue"
-
-val longRunning: ZStream[Sqs, Throwable, Unit] =
-  SqsStream(queueUrl, SqsStreamSettings.default.withVisibilityTimeout(30)).mapZIO { msg =>
-    SqsStream.extendMessageLifetime(queueUrl, msg, 120) *>
-      ZIO.sleep(90.seconds) *>
-      SqsStream.deleteMessage(queueUrl, msg)
-  }
-```
+To delete messages only after the program has processed a whole chunk, and to keep long-running chunks hidden, see [Process Messages at Least Once](./process-messages-at-least-once.md).
 
 ## Handling Errors
 

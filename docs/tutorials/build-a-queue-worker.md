@@ -81,7 +81,7 @@ The code above does two things. `localServer` starts the server on port 9324 and
 
 ## 3. Modeling Orders and Receipts
 
-SQS message bodies are strings. A `Serializer` turns our own types into strings when the producer sends them. Let's define an `Order` and a `Receipt`, a serializer for the receipt, and a decoder for the order:
+SQS message bodies are strings. A `Serializer` turns our own types into strings when the producer sends them. Let's define an `Order` and a `Receipt`, a serializer for each, and a decoder for the order:
 
 ```scala mdoc:silent
 case class Order(id: Int, item: String)
@@ -184,7 +184,7 @@ Running this program prints one receipt for each order. The order of the two lin
 {"orderId":2,"status":"packed pen"}
 ```
 
-Try changing the function in the worker to fail for the order with the item `pen`, for example with `ZIO.fail(new RuntimeException("out of pens"))`. The worker then stops with that error, and the order stays in the queue because the library never deleted it.
+Try changing the function in the worker to fail for the order with the item `pen`, for example with `ZIO.fail(new RuntimeException("out of pens"))`. The worker then stops with that error, so the program fails before it reads the receipts. The library deletes a chunk only after the function succeeds, so every order in the failed chunk stays in the queue, and SQS delivers it again after the visibility timeout.
 
 ## What You've Learned
 

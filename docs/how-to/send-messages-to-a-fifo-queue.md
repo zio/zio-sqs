@@ -3,11 +3,11 @@ id: send-messages-to-a-fifo-queue
 title: "Send Messages to a FIFO Queue"
 ---
 
-To keep the order of related messages and to drop repeated ones, send the messages to a FIFO queue. SQS requires a message group on every message sent to a FIFO queue, and it uses an optional deduplication token to ignore repeats. A `ProducerEvent` carries both, together with message attributes and an optional delivery delay.
+To keep the order of related messages and to drop repeated ones, send the messages to a FIFO queue. SQS requires a message group on every message sent to a FIFO queue, and it requires a deduplication token unless the queue has the `ContentBasedDeduplication` attribute enabled, in which case SQS derives the token from the message body. SQS uses the token to ignore repeats. A `ProducerEvent` carries both, together with message attributes and an optional delivery delay.
 
 ## Create a FIFO Queue
 
-The name of a FIFO queue has the form `name.fifo`, and the queue needs the `FifoQueue` attribute. `Utils.createQueue` takes the attributes as a map:
+The name of a FIFO queue has the form `name.fifo`, and the queue needs the `FifoQueue` attribute. Without `ContentBasedDeduplication`, every event must carry a `deduplicationId`. `Utils.createQueue` takes the attributes as a map:
 
 ```scala mdoc:compile-only
 import zio._
@@ -50,7 +50,7 @@ A FIFO queue does not support a per-message `delay`, so the event leaves it at `
 
 ## Publish the Events
 
-Events with the same `groupId` are delivered in the order they were sent. To send the event to the queue:
+SQS delivers the messages of one group in the order it receives them. The producer batches events and sends batches concurrently, so it does not guarantee the order in which SQS receives events that are published in parallel. To send the event to the queue:
 
 ```scala mdoc:compile-only
 val publish: ZIO[Sqs, Throwable, ProducerEvent[String]] =

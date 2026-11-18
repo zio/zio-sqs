@@ -131,6 +131,7 @@ lazy val docs = project
     projectName := "ZIO SQS",
     mainModuleName := (sqs / moduleName).value,
     projectStage := ProjectStage.ProductionReady,
+    libraryDependencies += "org.elasticmq" %% "elasticmq-rest-sqs" % elasticMqVersion,
     ScalaUnidoc / unidoc / unidocProjectFilter := inProjects(sqs)
   )
   .dependsOn(sqs)

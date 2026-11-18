@@ -1,6 +1,6 @@
 ---
-id: serialization
-title: "Serialization"
+id: use-a-custom-serializer
+title: "Use a Custom Serializer"
 ---
 
 SQS message bodies are strings, so every `Producer` needs a way to turn its events into strings. The `Serializer[A]` type class does this conversion. The library provides only the producing side: when the body arrives on the consumer side, the program reads `Message.ReadOnly#body` and decodes it itself.
@@ -85,3 +85,5 @@ def decodeOrder(message: Message.ReadOnly): Option[Order] =
 ```
 
 A body that does not match the pattern decodes to `None`, so the caller decides how to handle it. A regular expression is fine for this short format. Real bodies should go through a JSON decoder.
+
+For the members of `Serializer`, see [Serializer and Utils](../reference/serializer-and-utils.md).

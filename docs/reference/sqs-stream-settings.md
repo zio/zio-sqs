@@ -45,7 +45,7 @@ The builder methods are `withAutomaticExtension`, `withMaximumRetries` and `with
 
 The two methods compute the defaults from the stream settings. Both take the `SqsStreamSettings` of the stream:
 
-| Method         | Signature                                                    | Description                                                                                            |
-| -------------- | ------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------ |
-| `schedule`     | `(settings: SqsStreamSettings): Schedule[Any, Any, Any]`     | Returns `overrideRepeatSchedule`, or a schedule spaced by half the visibility timeout (15 seconds if unset). |
-| `initialDelay` | `(settings: SqsStreamSettings): Duration`                    | Returns `overrideInitialDelay`, or half the visibility timeout (15 seconds if unset).                  |
+| Method         | Signature                                                | Description                                                                                                  |
+| -------------- | -------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------ |
+| `schedule`     | `(settings: SqsStreamSettings): Schedule[Any, Any, Any]` | Returns `overrideRepeatSchedule`, or a schedule spaced by half the visibility timeout (15 seconds if unset). |
+| `initialDelay` | `(settings: SqsStreamSettings): Duration`                | Returns `overrideInitialDelay`, or half the visibility timeout (15 seconds if unset).                        |

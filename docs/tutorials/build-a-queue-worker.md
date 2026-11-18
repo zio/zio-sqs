@@ -84,8 +84,8 @@ The code above does two things. `localServer` starts the server on port 9324 and
 SQS message bodies are strings. A `Serializer` turns our own types into strings when the producer sends them. Let's define an `Order` and a `Receipt`, a serializer for the receipt, and a decoder for the order:
 
 ```scala mdoc:silent
-final case class Order(id: Int, item: String)
-final case class Receipt(orderId: Int, status: String)
+case class Order(id: Int, item: String)
+case class Receipt(orderId: Int, status: String)
 
 val orderSerializer: Serializer[Order] =
   Serializer.serializeString.contramap[Order](o => s"""{"id":${o.id},"item":"${o.item}"}""")

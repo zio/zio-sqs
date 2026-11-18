@@ -34,7 +34,7 @@ val text: String = Serializer.serializeString("plain text body")
 ```scala mdoc:silent
 import zio.sqs.serialization.Serializer
 
-final case class Order(id: Int, item: String)
+case class Order(id: Int, item: String)
 
 val orderSerializer: Serializer[Order] =
   Serializer.serializeString.contramap[Order](order => s"""{"id":${order.id},"item":"${order.item}"}""")

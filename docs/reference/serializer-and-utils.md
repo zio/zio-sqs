@@ -22,9 +22,9 @@ To write a serializer for a case class, see [Use a Custom Serializer](../how-to/
 
 `Utils` has two methods for working with queues by name. Both need the `Sqs` client:
 
-| Method        | Signature                                                                             | Description                                               |
-| ------------- | ------------------------------------------------------------------------------------- | --------------------------------------------------------- |
-| `createQueue` | `(name: String, attributes: Map[QueueAttributeName, String] = Map()): RIO[Sqs, Unit]` | Creates a queue with the given name and attributes.       |
-| `getQueueUrl` | `(name: String): RIO[Sqs, String]`                                                    | Returns the URL of an existing queue with the given name. |
+| Method              | Signature                                                                             | Description                                               |
+| ------------------- | ------------------------------------------------------------------------------------- | --------------------------------------------------------- |
+| `Utils.createQueue` | `(name: String, attributes: Map[QueueAttributeName, String] = Map()): RIO[Sqs, Unit]` | Creates a queue with the given name and attributes.       |
+| `Utils.getQueueUrl` | `(name: String): RIO[Sqs, String]`                                                    | Returns the URL of an existing queue with the given name. |
 
-`Utils.createQueue` creates the queue when it does not exist. The `attributes` map sets queue attributes, such as `QueueAttributeName.fifoQueue` for a FIFO queue, as shown in [Send Messages to a FIFO Queue](../how-to/send-messages-to-a-fifo-queue.md).
+`Utils.createQueue` creates the queue when it does not exist. The `attributes` map sets queue attributes, such as `QueueAttributeName.FifoQueue` for a FIFO queue, as shown in [Send Messages to a FIFO Queue](../how-to/send-messages-to-a-fifo-queue.md).

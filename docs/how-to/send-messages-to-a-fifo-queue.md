@@ -7,7 +7,7 @@ To keep the order of related messages and to drop repeated ones, send the messag
 
 ## Create a FIFO Queue
 
-The name of a FIFO queue must end with `.fifo`, and the queue needs the `FifoQueue` attribute. `Utils.createQueue` takes the attributes as a map:
+The name of a FIFO queue has the form `name.fifo`, and the queue needs the `FifoQueue` attribute. `Utils.createQueue` takes the attributes as a map:
 
 ```scala mdoc:compile-only
 import zio._
@@ -17,7 +17,7 @@ import zio.sqs.Utils
 
 val createFifoQueue: RIO[Sqs, String] =
   for {
-    _        <- Utils.createQueue("orders.fifo", Map(QueueAttributeName.fifoQueue -> "true"))
+    _        <- Utils.createQueue("orders.fifo", Map(QueueAttributeName.FifoQueue -> "true"))
     queueUrl <- Utils.getQueueUrl("orders.fifo")
   } yield queueUrl
 ```

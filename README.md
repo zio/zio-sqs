@@ -18,7 +18,7 @@ ZIO SQS is published for Scala 2.13 and Scala 3 on the JVM only. To use it, we a
 libraryDependencies ++= Seq(
   // ZIO SQS client: producers, consumer streams and queue helpers (JVM only).
   // It brings the zio-aws SQS client and the Netty HTTP client as dependencies.
-  "dev.zio" %% "zio-sqs" % "0.12.6"
+  "dev.zio" %% "zio-sqs" % "0.12.7"
 )
 ```
 

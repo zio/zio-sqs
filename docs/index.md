@@ -1,28 +1,30 @@
 ---
 id: index
 title: "Introduction to ZIO SQS"
-sidebar_label: "ZIO SQS"
+sidebar_label: "Introduction"
 ---
 
 [ZIO SQS](https://zio.dev/zio-sqs) is a ZIO-powered client for AWS SQS. It is built on top of the [AWS SDK for Java 2.0](https://docs.aws.amazon.com/sdk-for-java/v2/developer-guide/basics.html) via the automatically generated wrappers from [zio-aws](https://zio.dev/zio-aws).
 
 @PROJECT_BADGES@
 
-## Introduction
-
 ZIO SQS enables us to produce and consume elements to/from the Amazon SQS service. It is integrated with ZIO Streams, so we can produce and consume elements in a streaming fashion, element by element or micro-batching.
 
 ## Installation
 
-In order to use this library, we need to add the following line in our `build.sbt` file:
+ZIO SQS is published for Scala 2.13 and Scala 3 on the JVM only. To use it, we add the following to the `build.sbt` file:
 
 ```scala
-libraryDependencies += "dev.zio" %% "zio-sqs" % "@VERSION@"
+libraryDependencies ++= Seq(
+  // ZIO SQS client: producers, consumer streams and queue helpers (JVM only).
+  // It brings the zio-aws SQS client and the Netty HTTP client as dependencies.
+  "dev.zio" %% "zio-sqs" % "@VERSION@"
+)
 ```
 
 ## Example
 
-In this example we produce a stream of events to the `MyQueue` and then consume them from that queue (at-most-once delivery semantics):
+In this example we produce a stream of ten events to the `MyQueue` and then consume them from that queue (at-most-once delivery semantics):
 
 ```scala mdoc:compile-only
 import zio._
@@ -38,7 +40,7 @@ object ProducerConsumerExample extends ZIOAppDefault {
   val queueName = "MyQueue"
 
   val stream: ZStream[Any, Nothing, ProducerEvent[String]] =
-    ZStream.iterate(0)(_ + 1).map(_.toString).map(ProducerEvent(_))
+    ZStream.iterate(0)(_ + 1).map(_.toString).map(ProducerEvent(_)).take(10)
 
   val program: ZIO[Sqs, Throwable, Unit] = for {
     _        <- Utils.createQueue(queueName)
@@ -63,4 +65,4 @@ object ProducerConsumerExample extends ZIOAppDefault {
 }
 ```
 
-Check out the examples folder in `zio-sqs/src/test/scala/examples` for additional examples that cover at-least-once and at-most-once delivery semantics.
+To learn the library step by step, start with [Getting Started](./getting-started.md). The examples folder in `zio-sqs/src/test/scala/examples` has additional examples for at-least-once and at-most-once delivery semantics.

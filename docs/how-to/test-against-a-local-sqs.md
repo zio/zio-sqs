@@ -1,6 +1,6 @@
 ---
-id: testing-locally
-title: "Testing Locally"
+id: test-against-a-local-sqs
+title: "Test Against a Local SQS"
 ---
 
 Programs that use ZIO SQS can be tested without an AWS account. ElasticMQ is an open-source, in-memory server that implements the SQS REST API. The library's own test suite runs against it, and a program can use it in the same way. The client only needs its endpoint pointed at the local server.
@@ -17,7 +17,7 @@ libraryDependencies += "org.elasticmq" %% "elasticmq-rest-sqs" % "1.7.1" % Test
 
 `SQSRestServerBuilder.withPort` builds a server that listens on the given port, and `start()` starts it. The server is a resource, so it is wrapped in `ZIO.acquireRelease`. The release step stops the server when the scope closes, even when the test fails:
 
-```scala
+```scala mdoc:silent
 import org.elasticmq.rest.sqs.{SQSRestServer, SQSRestServerBuilder}
 import zio._
 
@@ -29,7 +29,7 @@ val localServer: ZIO[Scope, Throwable, SQSRestServer] =
 
 The SQS client needs two changes for the local server. The endpoint override sends the requests to `http://localhost:9324` instead of AWS. The credentials can be any static values, because the local server does not check them:
 
-```scala
+```scala mdoc:silent
 import java.net.URI
 import software.amazon.awssdk.auth.credentials.{AwsBasicCredentials, StaticCredentialsProvider}
 import software.amazon.awssdk.regions.Region
@@ -46,13 +46,13 @@ val localClient: ZLayer[Any, Throwable, Sqs] =
   )
 ```
 
-Programs under test should take the `Sqs` layer as a dependency rather than building it themselves. That way the test can provide `localClient`, and the production code can provide the real client from [Getting Started](./getting-started.md).
+Programs under test should take the `Sqs` layer as a dependency rather than building it themselves. That way the test can provide `localClient`, and the production code can provide the real client from [Getting Started](../getting-started.md).
 
 ## Running a Round Trip
 
 A round trip creates a queue, sends an event, and reads it back. The program below runs against the local server, so the output is printed without any AWS call:
 
-```scala
+```scala mdoc:silent
 import zio._
 import zio.aws.sqs.Sqs
 import zio.sqs.{SqsStream, SqsStreamSettings, Utils}
@@ -76,7 +76,7 @@ The round trip sets `withStopWhenQueueEmpty` to `true` and `withWaitTimeSeconds`
 
 The round trip starts its own server, so it only needs the client layer to run:
 
-```scala
+```scala mdoc:compile-only
 object LocalRoundTrip extends ZIOAppDefault {
   override def run: ZIO[Any, Throwable, Unit] =
     ZIO.scoped(roundTrip).provide(localClient)

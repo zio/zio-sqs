@@ -38,6 +38,7 @@ trait Producer[T] {
    * @return the published event.
    *         Fails with a [[ProducerError]] when SQS reports an error for the event that is not retried:
    *         either the error is not recoverable (see [[ProducerError.isRecoverable]]), or the event has used up its `retryMaxCount` retries.
+   *         Fails with the request's error when the batch request to SQS fails as a whole.
    */
   def produce(e: ProducerEvent[T]): Task[ProducerEvent[T]]
 
@@ -65,7 +66,7 @@ trait Producer[T] {
   def sendStream: Stream[Throwable, ProducerEvent[T]] => ZStream[Any, Throwable, ProducerEvent[T]]
 
   /**
-   * A sink that publishes each chunk of events as a batch.
+   * A sink that publishes each incoming collection of events with [[produceBatch]].
    * Fails if an event fails to publish.
    * @return a sink for publishing.
    */
@@ -74,15 +75,17 @@ trait Producer[T] {
   /**
    * Publishes a batch of events and reports each result separately.
    * An error that SQS reports for an event does not fail the returned task. Each such event is returned as a [[ProducerError]] on the left.
-   * Completes once every input event has either been published or has failed.
+   * Completes once every input event has either been published or has failed with an error that SQS reports for it.
+   * Fails when a batch request to SQS fails as a whole, for example on a network error.
    * @param es events to publish.
    * @return one result per input event: the published event on the right, or a [[ProducerError]] on the left.
    */
   def produceBatchE(es: Iterable[ProducerEvent[T]]): Task[Iterable[ErrorOrEvent[T]]]
 
   /**
-   * A pipeline like [[sendStream]] that reports each result separately instead of failing.
+   * A pipeline like [[sendStream]] that emits an error that SQS reports for an event as a [[ProducerError]] on the left, instead of failing.
    * Each input event produces one [[ErrorOrEvent]]: the published event on the right, or a [[ProducerError]] on the left.
+   * The stream still fails when a batch request to SQS fails as a whole.
    * @return a pipeline from the events to their results.
    */
   def sendStreamE: Stream[Throwable, ProducerEvent[T]] => ZStream[Any, Throwable, ErrorOrEvent[T]]
@@ -98,10 +101,10 @@ object Producer {
    * @param queueUrl url of the queue to publish events.
    *                 A queue URL can be obtained with [[zio.sqs.Utils.getQueueUrl]].
    * @param serializer Serializer for the published event.
-   *                   If the published event is a string, [[zio.sqs.serialization.Serializer]] can be used.
+   *                   If the published event is a string, [[zio.sqs.serialization.Serializer.serializeString]] can be used.
    * @param settings parameters used to instantiate the producer.
    * @tparam T type of the event to publish
-   * @return producer for publishing events. The producer's background fiber is tied to the enclosing `Scope`.
+   * @return producer for publishing events. The producer's main background fiber is tied to the enclosing `Scope`. Retries run in daemon fibers.
    */
   def make[T](
     queueUrl: String,
@@ -193,7 +196,8 @@ object Producer {
   }
 
   /**
-   * Publishes the provided event to SQS.
+   * Sends one batch request to SQS, then completes the promise of each entry, queues recoverable failures for retry,
+   * or fails every promise if the request itself fails.
    * @param failedQueue a queue to put events for retry in case of ''recoverable'' failures.
    * @param retryDelay delay to wait inserting events to the failedQueue.
    * @param retryMaxCount max allowed number of retries per event.
@@ -232,7 +236,7 @@ object Producer {
    * Partitions the response into a collections of: successful, retryable and non-retryable events.
    * @param m map that maps request id to the request entry that was sent to the server.
    * @param retryMaxCount max retry count that can be done of one event.
-   *                      If the recoverable event fails for more than or equal to `retryMaxCount` times, it is considered unrecoverable.
+   *                      Once an event has been retried `retryMaxCount` times, its next recoverable failure is treated as unrecoverable.
    * @param res response returned from SQS that should be processed.
    * @tparam T type of the published event.
    * @return tuple with successful, retryable and non-retryable events.

@@ -12,92 +12,96 @@ import zio.stream.ZStream
 import scala.util.control.NonFatal
 
 /**
- * Producer that can be used to publish an event of type T to SQS queue
- * An instance of producer should be instantiated before publishing.
+ * Publishes events of type `T` to an SQS queue.
+ * Create an instance with [[Producer.make]] inside a `Scope`, then publish with the methods below.
  * {{{
- * // when publishing strings with the provided `client` to the given `queueUrl`
- * producer = Producer.make(client, queueUrl, Serializer.serializeString)
+ * import zio._
+ * import zio.aws.sqs.Sqs
+ * import zio.sqs.producer._
+ * import zio.sqs.serialization.Serializer
+ *
+ * def publish(queueUrl: String): ZIO[Sqs, Throwable, Unit] =
+ *   ZIO.scoped {
+ *     for {
+ *       producer <- Producer.make(queueUrl, Serializer.serializeString)
+ *       _        <- producer.produce(ProducerEvent("hello"))
+ *     } yield ()
+ *   }
  * }}}
  * @tparam T type of the event to publish
  */
 trait Producer[T] {
 
   /**
-   * Publishes a single event and fails the task.
+   * Publishes one event.
    * @param e event to produce.
-   * @return result of the operation.
-   *         Task fails if the server returns an error.
+   * @return the published event.
+   *         Fails with a [[ProducerError]] when SQS reports an error for the event that is not retried:
+   *         either the error is not recoverable (see [[ProducerError.isRecoverable]]), or the event has used up its `retryMaxCount` retries.
    */
   def produce(e: ProducerEvent[T]): Task[ProducerEvent[T]]
 
   /**
    * Publishes a batch of events.
    * @param es events to publish.
-   * @return result of publishing.
-   *         The returned collection contains the same items that were published.
-   *         Task fails if the server returns an error for any of the provided events.
+   * @return the published events, in the order they were given.
+   *         Fails if any of the events fails to publish.
    */
   def produceBatch(es: Iterable[ProducerEvent[T]]): Task[Iterable[ProducerEvent[T]]]
 
   /**
-   * Stream that takes events to publish and produces a stream with published events.
-   * Fails if the server returns an error for any of the published events.
+   * A pipeline that publishes each event of the input stream and emits the published event.
+   * Fails if an event fails to publish.
    * {{{
-   * // ZIO version = RC17
-   * producer.use { p =>
-   *   p.sendStream(Stream(events: _*))
-   *     .foreach(_ => ...)
-   * }
-   * // ZIO version > RC17
-   * producer.use { p =>
-   *   Stream(events: _*)
-   *     .via(p.sendStream)
-   *     .foreach(_ => ...)
-   * }
-   * }}}
+   * import zio._
+   * import zio.stream._
+   * import zio.sqs.producer._
    *
-   * @return stream with published events.
+   * def publishAll(p: Producer[String], events: List[ProducerEvent[String]]): Task[Unit] =
+   *   p.sendStream(ZStream.fromIterable(events)).runDrain
+   * }}}
+   * @return a pipeline from the events to the published events.
    */
   def sendStream: Stream[Throwable, ProducerEvent[T]] => ZStream[Any, Throwable, ProducerEvent[T]]
 
   /**
-   * Sink that can be used to publish events.
-   * Fails if the server returns an error for any of the published events.
-   * @return sink for publishing.
+   * A sink that publishes each chunk of events as a batch.
+   * Fails if an event fails to publish.
+   * @return a sink for publishing.
    */
   def sendSink: ZSink[Any, Throwable, Iterable[ProducerEvent[T]], Nothing, Unit]
 
   /**
-   * Publishes a batch of events.
+   * Publishes a batch of events and reports each result separately.
+   * An error that SQS reports for an event does not fail the returned task. Each such event is returned as a [[ProducerError]] on the left.
+   * Completes once every input event has either been published or has failed.
    * @param es events to publish.
-   * @return result of publishing.
-   *         The returned collection contains [[zio.sqs.producer.ErrorOrEvent]]
-   *         Doesn't fail the Task if the server returns an error for any of the provided events.
-   *         Instead, the resulting collection contains either the error for the given event or the published event itself.
-   *         Task completes when all input events were processed (published to the server or failed with an error).
+   * @return one result per input event: the published event on the right, or a [[ProducerError]] on the left.
    */
   def produceBatchE(es: Iterable[ProducerEvent[T]]): Task[Iterable[ErrorOrEvent[T]]]
 
   /**
-   * Stream that takes the events and produces a stream with the results.
-   * @return stream with published events or errors [[zio.sqs.producer.ErrorOrEvent]].
-   *         Task completes when all input events were processed (published to the server or failed with an error).
+   * A pipeline like [[sendStream]] that reports each result separately instead of failing.
+   * Each input event produces one [[ErrorOrEvent]]: the published event on the right, or a [[ProducerError]] on the left.
+   * @return a pipeline from the events to their results.
    */
   def sendStreamE: Stream[Throwable, ProducerEvent[T]] => ZStream[Any, Throwable, ErrorOrEvent[T]]
 }
 
+/**
+ * Factory for [[Producer]].
+ */
 object Producer {
 
   /**
    * Instantiates a new producer.
    * @param queueUrl url of the queue to publish events.
-   *                 A queue can be obtained using {{{Utils.getQueueUrl(client, queueName)}}}
+   *                 A queue URL can be obtained with [[zio.sqs.Utils.getQueueUrl]].
    * @param serializer Serializer for the published event.
    *                   If the published event is a string, [[zio.sqs.serialization.Serializer]] can be used.
    * @param settings parameters used to instantiate the producer.
-   * @tparam R zio environment
    * @tparam T type of the event to publish
-   * @return managed producer for publishing events.
+   * @return producer for publishing events. The producer's background fiber is tied to the enclosing `Scope`.
    */
   def make[T](
     queueUrl: String,

@@ -5,6 +5,7 @@ import zio.durationInt
 
 /**
  * Settings for the producer.
+ * Creating the settings with a `batchSize` above 10 throws a `java.lang.IllegalArgumentException`.
  * @param batchSize size of the batch to use. Up to 10 messages can be buffered and sent as a batch request.
  * @param duration time to wait for the batch to be full (have the specified batchSize).
  * @param parallelism number of concurrent requests to make to SQS.

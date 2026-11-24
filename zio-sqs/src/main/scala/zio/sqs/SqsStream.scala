@@ -141,16 +141,17 @@ object SqsStream {
 
   /**
    * Sets the visibility timeout of many messages to the specified number of seconds, in batches of 10.
-   * SQS can fail some entries of a batch. Each failed attempt is retried for those entries, up to `maximumRetries` times.
-   * If entries still fail after the last retry, the effect fails with a `RuntimeException` whose message is
-   * `Failed to change message visibility after retrying`.
-   * The returned chunk holds only the messages that succeeded in the last attempt. Messages that succeeded in an earlier attempt are not included.
+   * The messages are sent in batches of 10. SQS can fail some entries of a batch. Each batch retries its failed entries
+   * up to `maximumRetries` times. If entries of a batch still fail after the last retry, the effect fails with a
+   * `RuntimeException` whose message is `Failed to change message visibility after retrying`.
+   * For each batch of 10, the returned chunk holds only the messages that succeeded in that batch's last attempt.
+   * Messages that succeeded in an earlier attempt of the same batch are not included.
    *
    * @param queueUrl is the SQS queue URL
    * @param messages are the messages whose visibility timeout to change
    * @param seconds is the new visibility timeout, in seconds
-   * @param maximumRetries is the number of retries for the entries that fail
-   * @return the messages that succeeded in the last attempt
+   * @param maximumRetries is the number of retries for the entries that fail, per batch of 10
+   * @return for each batch of 10, the messages that succeeded in that batch's last attempt
    */
   def extendMessageLifetimeBatch(
     queueUrl: String,
@@ -204,16 +205,18 @@ object SqsStream {
     zio.aws.sqs.Sqs.deleteMessage(DeleteMessageRequest(queueUrl, msg.receiptHandle.getOrElse(""))).mapError(_.toThrowable)
 
   /**
-   * Deletes a batch of messages from the queue. This method retries deleting messages that fail and internally uses the message IDs to retry.
-   * It also chunks up the messages into batches of 10 before deleting them to avoid hitting the SQS limit of 10 messages per deleteMessageBatch call.
-   * The returned chunk holds only the messages that succeeded in the last attempt. Messages that succeeded in an earlier attempt are not included.
-   * If entries still fail after the last retry, the effect fails with a `RuntimeException` whose message is
-   * `Failed to delete messages after retrying`.
+   * Deletes a batch of messages from the queue. It retries the entries that fail, and finds them again by their position in `msgs`,
+   * which it uses as the batch entry ID.
+   * It chunks up the messages into batches of 10 before deleting them to avoid hitting the SQS limit of 10 messages per deleteMessageBatch call.
+   * Each batch retries its failed entries up to `maximumRetries` times. If entries of a batch still fail after the last retry, the effect
+   * fails with a `RuntimeException` whose message is `Failed to delete messages after retrying`.
+   * For each batch of 10, the returned chunk holds only the messages that succeeded in that batch's last attempt.
+   * Messages that succeeded in an earlier attempt of the same batch are not included.
    *
    * @param queueUrl is the SQS queue URL
    * @param msgs are the messages to delete
-   * @param maximumRetries is the number of retries for the entries that fail
-   * @return the messages that succeeded in the last attempt
+   * @param maximumRetries is the number of retries for the entries that fail, per batch of 10
+   * @return for each batch of 10, the messages that succeeded in that batch's last attempt
    */
   def deleteMessageBatch(queueUrl: String, msgs: Chunk[Message.ReadOnly], maximumRetries: Int = 8): RIO[Sqs, Chunk[Message.ReadOnly]] = {
     // We need to keep track of the original message IDs to retry later

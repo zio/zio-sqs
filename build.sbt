@@ -1,7 +1,7 @@
 val mainScala         = "2.13.18"
 val allScala          = Seq("3.9.0", "2.13.18")
 val zioVersion        = "2.1.26"
-val zioAwsVersion     = "7.55.6.1"
+val zioAwsVersion     = "7.59.2.2"
 val elasticMqVersion  = "1.7.1"
 val semanticDbVersion = "4.14.1"
 
@@ -131,6 +131,7 @@ lazy val docs = project
     projectName := "ZIO SQS",
     mainModuleName := (sqs / moduleName).value,
     projectStage := ProjectStage.ProductionReady,
+    libraryDependencies += "org.elasticmq" %% "elasticmq-rest-sqs" % elasticMqVersion,
     ScalaUnidoc / unidoc / unidocProjectFilter := inProjects(sqs)
   )
   .dependsOn(sqs)

@@ -2,7 +2,8 @@ package zio.sqs.producer
 import zio.aws.sqs.model.BatchResultErrorEntry
 
 /**
- * Encodes an error for the published message
+ * Encodes an error for the published message.
+ * Its `getMessage` has the form `senderFault: <senderFault>, code: <code>, message: <message or empty>`.
  * Fields `senderFault`, `code`, `message` correspond to the respective fields in [[https://docs.aws.amazon.com/AWSSimpleQueueService/latest/APIReference/API_BatchResultErrorEntry.html BatchResultErrorEntry]]
  * @param senderFault whether the error happened due to the caller of the batch API action.
  * @param code an error code representing why the action failed on this entry.
@@ -17,10 +18,13 @@ final case class ProducerError[T](
   event: ProducerEvent[T]
 ) extends RuntimeException(s"senderFault: $senderFault, code: $code, message: ${message.getOrElse("")}")
 
+/**
+ * Factory and recoverability check for [[ProducerError]].
+ */
 object ProducerError {
 
   /**
-   * The collection if errors that considered recoverable.
+   * The error codes that count as recoverable: `ServiceUnavailable` and `ThrottlingException`.
    */
   private val RecoverableCodes = Set(
     "ServiceUnavailable",
@@ -28,7 +32,7 @@ object ProducerError {
   )
 
   /**
-   * Creates a new `ProducerError` out of the result entry and the event that was published.
+   * Creates a new `ProducerError` from the failed result entry and the event that was published.
    */
   def apply[T](entry: BatchResultErrorEntry.ReadOnly, event: ProducerEvent[T]): ProducerError[T] =
     ProducerError(
@@ -39,9 +43,9 @@ object ProducerError {
     )
 
   /**
-   * Checks whether the provided error code considered to be recoverable or not.
+   * Checks whether the provided error code is recoverable. Only `ServiceUnavailable` and `ThrottlingException` are.
    * @param code code to check.
-   * @return true if the code considered recoverable, otherwise - false.
+   * @return true if the code is recoverable, otherwise false.
    */
   def isRecoverable(code: String): Boolean =
     RecoverableCodes.contains(code)

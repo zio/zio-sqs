@@ -10,6 +10,7 @@ import zio.aws.sqs.model.MessageAttributeValue
  * @param groupId assigns a specific [[https://docs.aws.amazon.com/AWSSimpleQueueService/latest/SQSDeveloperGuide/using-messagegroupid-property.html message group]] to the message.
  * @param deduplicationId token used for [[https://docs.aws.amazon.com/AWSSimpleQueueService/latest/SQSDeveloperGuide/using-messagededuplicationid-property.html deduplication]] of sent messages.
  * @param delay in order to  [[https://docs.aws.amazon.com/AWSSimpleQueueService/latest/SQSDeveloperGuide/sqs-message-timers.html delay delivery]] of the message. Allowed values: 0 to 15 minutes.
+ *              The producer sends the whole seconds of the delay; any fraction of a second is dropped.
  * @tparam T type of the payload for the event.
  */
 final case class ProducerEvent[T](
@@ -20,10 +21,13 @@ final case class ProducerEvent[T](
   delay: Option[Duration] = None
 )
 
+/**
+ * Factory for [[ProducerEvent]].
+ */
 object ProducerEvent {
 
   /**
-   * Creates an event from a string without additional attributes or parameters.
+   * Creates an event from a string, with no attributes, group, deduplication ID or delay.
    */
   def apply(body: String): ProducerEvent[String] =
     ProducerEvent(

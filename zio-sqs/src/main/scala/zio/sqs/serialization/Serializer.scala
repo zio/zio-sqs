@@ -5,6 +5,9 @@ package zio.sqs.serialization
  */
 trait Serializer[A] { self =>
 
+  /**
+   * Converts a value to the string that is sent as the SQS message body.
+   */
   def apply(a: A): String
 
   /**
@@ -13,8 +16,14 @@ trait Serializer[A] { self =>
   final def contramap[B](f: B => A): Serializer[B] = (b: B) => self(f(b))
 }
 
+/**
+ * Built-in [[Serializer]] instances.
+ */
 object Serializer {
 
+  /**
+   * Returns the string unchanged, so the message body is the string itself.
+   */
   final val serializeString: Serializer[String] = (a: String) => a
 
 }

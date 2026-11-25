@@ -428,12 +428,12 @@ object ProducerSpec extends ZIOSpecDefault {
                        producer.flatMap(p => p.produceBatchE(events))
                      }.provide(client)
         } yield {
-          val successes = results.filter(_.isRight).collect {
-            case Right(x) => x.data
+          val successes = results.filter(_.isRight).collect { case Right(x) =>
+            x.data
           }
 
-          val failures = results.filter(_.isLeft).collect {
-            case Left(x) => x.event.data
+          val failures = results.filter(_.isLeft).collect { case Left(x) =>
+            x.event.data
           }
 
           assert(results.size)(equalTo(events.size)) &&

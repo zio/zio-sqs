@@ -87,6 +87,7 @@ jobs:
         java:
         - '17'
         - '21'
+        - '25'
     steps:
     - name: Setup Scala
       uses: actions/setup-java@v6.3.0

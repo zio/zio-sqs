@@ -17,7 +17,7 @@ jobs:
     if: ${{ github.event_name == 'pull_request' }}
     steps:
     - name: Git Checkout
-      uses: actions/checkout@v3.3.0
+      uses: actions/checkout@v7.0.1
       with:
         fetch-depth: '0'
     - name: Setup Java
@@ -51,7 +51,7 @@ jobs:
     if: ${{ ((github.event_name == 'release') && (github.event.action == 'published')) }}
     steps:
     - name: Git Checkout
-      uses: actions/checkout@v4.1.1
+      uses: actions/checkout@v7.0.1
       with:
         fetch-depth: '0'
     - name: Setup NodeJs
@@ -73,7 +73,7 @@ jobs:
     if: ${{ (github.event_name == 'release') && (github.event.action == 'published') }}
     steps:
     - name: Git Checkout
-      uses: actions/checkout@v4.1.1
+      uses: actions/checkout@v7.0.1
       with:
         fetch-depth: '0'
     - name: notify the main repo about the new release of docs package
@@ -100,7 +100,7 @@ jobs:
     if: ${{ github.event_name == 'push' }}
     steps:
     - name: Git Checkout
-      uses: actions/checkout@v4
+      uses: actions/checkout@v7.0.1
       with:
         fetch-depth: '0'
     - name: Install libuv
